@@ -1,114 +1,81 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
 import { api, type Department, type Role } from './api'
+import { CheckList, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, toggled, useList, useRunner, useToast } from './ui'
 
 type Panel = { mode: 'create' } | { mode: 'detail'; id: number } | null
 
-const message = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong.')
-
 export function Departments() {
-  const [items, setItems] = useState<Department[] | null>(null)
-  const [error, setError] = useState('')
+  const { items, error, load } = useList(api.list)
   const [panel, setPanel] = useState<Panel>(null)
   const [query, setQuery] = useState('')
-  const [showInactive, setShowInactive] = useState(false)
-  const [toast, setToast] = useState('')
-
-  const load = useCallback(async () => {
-    try {
-      setItems(await api.list())
-      setError('')
-    } catch (e) {
-      setError(message(e))
-    }
-  }, [])
-
-  useEffect(() => {
-    void load()
-  }, [load])
+  const [status, setStatus] = useState('active')
+  const [type, setType] = useState('all')
+  const [toast, notify] = useToast()
 
   const close = () => setPanel(null)
   const saved = (text: string) => {
     close()
-    setToast(text)
+    notify(text)
     void load()
   }
 
-  useEffect(() => {
-    if (!toast) return
-    const t = setTimeout(() => setToast(''), 3000)
-    return () => clearTimeout(t)
-  }, [toast])
-
-  const q = query.trim().toLowerCase()
-  const visible = items?.filter((d) => (showInactive || d.isActive) && (!q || `${d.name} ${d.code} ${d.description ?? ''}`.toLowerCase().includes(q)))
-  const hidden = items ? items.filter((d) => !d.isActive).length : 0
+  const visible = items?.filter((d) =>
+    (status === 'all' || (status === 'active') === d.isActive) &&
+    (type === 'all' || (type === 'system') === d.isSystem) &&
+    matches(query, d.name, d.code, d.description))
+  const dirty = query !== '' || status !== 'active' || type !== 'all'
 
   return (
-    <main>
-      <header>
-        <h1>Departments</h1>
-        <button onClick={() => setPanel({ mode: 'create' })}>New department</button>
-      </header>
+    <Page title="Departments" subtitle="Teams and the roles their members inherit."
+      action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New department</button>}>
       {error && <p role="alert" className="error">{error}</p>}
-      <div className="toolbar">
-        <input type="search" placeholder="Search name, code or description" aria-label="Search departments" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <label className="check"><input type="checkbox" checked={showInactive} onChange={(e) => setShowInactive(e.target.checked)} />Show inactive ({hidden})</label>
-      </div>
-      {items === null && !error && <p>Loading...</p>}
-      {visible?.length === 0 && <p className="empty">{items?.length ? 'No departments match.' : 'No departments yet.'}</p>}
+      <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name, code or description"
+        onClear={() => { setQuery(''); setStatus('active'); setType('all') }}>
+        <Select label="Status" value={status} onChange={setStatus} options={[['active', 'Active'], ['inactive', 'Inactive'], ['all', 'All']]} />
+        <Select label="Type" value={type} onChange={setType} options={[['all', 'All'], ['system', 'System'], ['custom', 'Custom']]} />
+      </Filters>
+      {items === null && !error && <p className="muted">Loading...</p>}
+      {visible?.length === 0 && <p className="empty">{items?.length ? 'No departments match the filters.' : 'No departments yet.'}</p>}
       {visible && visible.length > 0 && (
         <table>
-          <thead>
-            <tr><th>Name</th><th>Code</th><th>Description</th><th>Status</th></tr>
-          </thead>
+          <thead><tr><th>Name</th><th>Code</th><th>Description</th><th>Status</th></tr></thead>
           <tbody>
             {visible.map((d) => (
               <tr key={d.id}>
                 <td data-label="Name"><button className="link" onClick={() => setPanel({ mode: 'detail', id: d.id })}>{d.name}</button></td>
-                <td data-label="Code">{d.code}</td>
+                <td data-label="Code"><code>{d.code}</code></td>
                 <td data-label="Description" className={d.description ? undefined : 'none'}>{d.description}</td>
-                <td data-label="Status">
-                  <span className={d.isActive ? 'badge ok' : 'badge off'}>{d.isActive ? 'Active' : 'Inactive'}</span>
-                  {d.isSystem && <span className="badge">System</span>}
-                </td>
+                <td data-label="Status"><StatusBadges active={d.isActive} system={d.isSystem} /></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
-      {panel && (
-        <div className="overlay" onClick={close}>
-          <aside role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
-            {panel.mode === 'create' ? <CreateForm onDone={saved} onCancel={close} /> : <Detail id={panel.id} onChanged={saved} onClose={close} />}
-          </aside>
-        </div>
-      )}
-      {toast && <p role="status" className="toast">{toast}</p>}
-    </main>
+      {panel?.mode === 'create' && <Modal title="New department" onClose={close}><CreateForm onDone={saved} onCancel={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title="Department" onClose={close}><Detail id={panel.id} onChanged={saved} onClose={close} /></Modal>}
+      {toast}
+    </Page>
   )
 }
 
 function CreateForm({ onDone, onCancel }: { onDone: (text: string) => void; onCancel: () => void }) {
-  const [error, setError] = useState('')
+  const { run, feedback } = useRunner()
 
-  async function submit(e: FormEvent<HTMLFormElement>) {
+  function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const data = new FormData(e.currentTarget)
-    try {
+    void run(async () => {
       await api.create({ name: String(data.get('name')).trim(), code: String(data.get('code')).trim(), description: String(data.get('description')).trim() || null })
       onDone('Department created.')
-    } catch (err) {
-      setError(message(err))
-    }
+    })
   }
 
   return (
     <form onSubmit={submit}>
-      <h2>New department</h2>
       <label>Name<input name="name" required maxLength={100} autoFocus /></label>
-      <label>Code<input name="code" required minLength={2} maxLength={32} pattern="[A-Z0-9_]+" title="Capital letters, digits and underscore" /></label>
+      <label>Code<input name="code" required minLength={2} maxLength={32} pattern="[A-Z0-9_]+" title="Capital letters, digits and underscore" placeholder="e.g. PRINTING" /></label>
       <label>Description<textarea name="description" maxLength={500} /></label>
-      {error && <p role="alert" className="error">{error}</p>}
+      {feedback}
       <div className="actions"><button type="submit">Create</button><button type="button" className="secondary" onClick={onCancel}>Cancel</button></div>
     </form>
   )
@@ -118,29 +85,17 @@ function Detail({ id, onChanged, onClose }: { id: number; onChanged: (text: stri
   const [dept, setDept] = useState<Department | null>(null)
   const [allRoles, setAllRoles] = useState<Role[]>([])
   const [assigned, setAssigned] = useState<Set<string>>(new Set())
-  const [error, setError] = useState('')
-  const [note, setNote] = useState('')
+  const { run, feedback, error, setError } = useRunner()
 
   useEffect(() => {
-    Promise.all([api.get(id), api.roles(id), api.allRoles()])
+    Promise.all([api.get(id), api.departmentRoles(id), api.allRoles()])
       .then(([d, mine, all]) => {
         setDept(d)
         setAssigned(new Set(mine.map((r) => r.name)))
         setAllRoles(all.filter((r) => r.isActive))
       })
       .catch((e) => setError(message(e)))
-  }, [id])
-
-  async function run(action: () => Promise<void>, done?: string) {
-    setError('')
-    setNote('')
-    try {
-      await action()
-      if (done) setNote(done)
-    } catch (e) {
-      setError(message(e))
-    }
-  }
+  }, [id, setError])
 
   const save = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -151,7 +106,7 @@ function Detail({ id, onChanged, onClose }: { id: number; onChanged: (text: stri
   }
 
   const saveRoles = () => run(async () => {
-    setAssigned(new Set((await api.assignRoles(id, [...assigned])).map((r) => r.name)))
+    setAssigned(new Set((await api.assignDepartmentRoles(id, [...assigned])).map((r) => r.name)))
   }, 'Roles saved.')
 
   const deactivate = () => {
@@ -163,32 +118,22 @@ function Detail({ id, onChanged, onClose }: { id: number; onChanged: (text: stri
     }
   }
 
-  const toggle = (name: string) => setAssigned((s) => {
-    const next = new Set(s)
-    if (!next.delete(name)) next.add(name)
-    return next
-  })
-
-  if (!dept) return <>{error ? <p role="alert" className="error">{error}</p> : <p>Loading...</p>}<button className="secondary" onClick={onClose}>Close</button></>
+  if (!dept) return error ? feedback : <p className="muted">Loading...</p>
 
   return (
     <>
+      <p className="meta"><code>{dept.code}</code><StatusBadges active={dept.isActive} system={dept.isSystem} /></p>
       <form onSubmit={save} key={dept.name + dept.description}>
-        <h2>{dept.name}</h2>
-        <p>{dept.code} <span className={dept.isActive ? 'badge ok' : 'badge off'}>{dept.isActive ? 'Active' : 'Inactive'}</span> {dept.isSystem && <span className="badge">System</span>}</p>
         <label>Name<input name="name" required maxLength={100} defaultValue={dept.name} /></label>
         <label>Description<textarea name="description" maxLength={500} defaultValue={dept.description ?? ''} /></label>
-        <div className="actions"><button type="submit">Save</button></div>
+        <div className="actions"><button type="submit">Save details</button></div>
       </form>
       <fieldset>
-        <legend>Roles</legend>
-        {allRoles.map((r) => (
-          <label key={r.id} className="check"><input type="checkbox" checked={assigned.has(r.name)} onChange={() => toggle(r.name)} />{r.name}</label>
-        ))}
+        <legend>Roles members inherit</legend>
+        <CheckList options={allRoles.map((r) => ({ key: r.name, label: r.name, hint: r.description }))} selected={assigned} onToggle={(k) => setAssigned((s) => toggled(s, k))} />
         <div className="actions"><button onClick={saveRoles}>Save roles</button></div>
       </fieldset>
-      {error && <p role="alert" className="error">{error}</p>}
-      {note && <p role="status">{note}</p>}
+      {feedback}
       <div className="actions">
         <button className="danger" disabled={dept.isSystem || !dept.isActive} onClick={deactivate}>Deactivate</button>
         <button className="secondary" onClick={onClose}>Close</button>

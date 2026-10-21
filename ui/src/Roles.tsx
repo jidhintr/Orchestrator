@@ -1,0 +1,147 @@
+import { type FormEvent, useEffect, useState } from 'react'
+import { api, type Role, type User } from './api'
+import { Avatar, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, useList, useRunner, useToast } from './ui'
+
+type Panel = { mode: 'create' } | { mode: 'detail'; id: number } | null
+
+export function Roles() {
+  const { items, error, load } = useList(api.allRoles)
+  const [panel, setPanel] = useState<Panel>(null)
+  const [query, setQuery] = useState('')
+  const [status, setStatus] = useState('enabled')
+  const [type, setType] = useState('all')
+  const [toast, notify] = useToast()
+
+  const close = () => setPanel(null)
+  const saved = (text: string) => {
+    close()
+    notify(text)
+    void load()
+  }
+
+  const visible = items?.filter((r) =>
+    (status === 'all' || (status === 'enabled') === r.isActive) &&
+    (type === 'all' || (type === 'system') === r.isSystem) &&
+    matches(query, r.name, r.description))
+  const dirty = query !== '' || status !== 'enabled' || type !== 'all'
+
+  return (
+    <Page title="Roles" subtitle="What people may do. Assigned to departments and users."
+      action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New role</button>}>
+      {error && <p role="alert" className="error">{error}</p>}
+      <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name or description"
+        onClear={() => { setQuery(''); setStatus('enabled'); setType('all') }}>
+        <Select label="Status" value={status} onChange={setStatus} options={[['enabled', 'Enabled'], ['disabled', 'Disabled'], ['all', 'All']]} />
+        <Select label="Type" value={type} onChange={setType} options={[['all', 'All'], ['system', 'System'], ['custom', 'Custom']]} />
+      </Filters>
+      {items === null && !error && <p className="muted">Loading...</p>}
+      {visible?.length === 0 && <p className="empty">{items?.length ? 'No roles match the filters.' : 'No roles yet.'}</p>}
+      {visible && visible.length > 0 && (
+        <table>
+          <thead><tr><th>Name</th><th>Description</th><th>Status</th></tr></thead>
+          <tbody>
+            {visible.map((r) => (
+              <tr key={r.id}>
+                <td data-label="Name"><button className="link" onClick={() => setPanel({ mode: 'detail', id: r.id })}>{r.name}</button></td>
+                <td data-label="Description" className={r.description ? undefined : 'none'}>{r.description}</td>
+                <td data-label="Status"><StatusBadges active={r.isActive} system={r.isSystem} activeLabel="Enabled" inactiveLabel="Disabled" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {panel?.mode === 'create' && <Modal title="New role" onClose={close}><CreateForm onDone={saved} onCancel={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title="Role" onClose={close}><Detail id={panel.id} onChanged={saved} onClose={close} /></Modal>}
+      {toast}
+    </Page>
+  )
+}
+
+const fields = (form: HTMLFormElement) => {
+  const data = new FormData(form)
+  return { name: String(data.get('name')).trim(), description: String(data.get('description')).trim() }
+}
+
+function CreateForm({ onDone, onCancel }: { onDone: (text: string) => void; onCancel: () => void }) {
+  const { run, feedback } = useRunner()
+  const submit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const input = fields(e.currentTarget)
+    void run(async () => {
+      await api.createRole(input)
+      onDone('Role created.')
+    })
+  }
+  return (
+    <form onSubmit={submit}>
+      <label>Name<input name="name" required minLength={2} maxLength={50} autoFocus /></label>
+      <label>Description<textarea name="description" maxLength={500} /></label>
+      {feedback}
+      <div className="actions"><button type="submit">Create</button><button type="button" className="secondary" onClick={onCancel}>Cancel</button></div>
+    </form>
+  )
+}
+
+function Detail({ id, onChanged, onClose }: { id: number; onChanged: (text: string) => void; onClose: () => void }) {
+  const [role, setRole] = useState<Role | null>(null)
+  const [users, setUsers] = useState<User[]>([])
+  const { run, feedback, error, setError } = useRunner()
+
+  useEffect(() => {
+    Promise.all([api.role(id), api.roleUsers(id)])
+      .then(([r, u]) => {
+        setRole(r)
+        setUsers(u)
+      })
+      .catch((e) => setError(message(e)))
+  }, [id, setError])
+
+  const save = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const input = fields(e.currentTarget)
+    return run(async () => {
+      setRole(await api.updateRole(id, input))
+    }, 'Saved.')
+  }
+
+  const toggleEnabled = () => run(async () => {
+    if (role?.isActive) await api.disableRole(id)
+    else await api.enableRole(id)
+    onChanged(role?.isActive ? 'Role disabled.' : 'Role enabled.')
+  })
+
+  const remove = () => {
+    if (role && window.confirm(`Permanently delete ${role.name}?`)) {
+      void run(async () => {
+        await api.deleteRole(id)
+        onChanged('Role deleted.')
+      })
+    }
+  }
+
+  if (!role) return error ? feedback : <p className="muted">Loading...</p>
+
+  return (
+    <>
+      <p className="meta"><StatusBadges active={role.isActive} system={role.isSystem} activeLabel="Enabled" inactiveLabel="Disabled" /></p>
+      <form onSubmit={save} key={role.name + role.description}>
+        <label>Name<input name="name" required minLength={2} maxLength={50} defaultValue={role.name} /></label>
+        <label>Description<textarea name="description" maxLength={500} defaultValue={role.description} /></label>
+        <div className="actions"><button type="submit">Save details</button></div>
+      </form>
+      <fieldset>
+        <legend>Users with this role ({users.length})</legend>
+        {users.length === 0 && <p className="muted">Nobody yet.</p>}
+        <ul className="people">
+          {users.map((u) => <li key={u.id}><Avatar name={`${u.firstName} ${u.lastName}`} />{u.firstName} {u.lastName}</li>)}
+        </ul>
+      </fieldset>
+      {feedback}
+      <div className="actions">
+        <button className="secondary" disabled={role.isSystem} onClick={toggleEnabled}>{role.isActive ? 'Disable' : 'Enable'}</button>
+        <button className="danger" disabled={role.isSystem} onClick={remove}>Delete</button>
+        <button className="secondary" onClick={onClose}>Close</button>
+      </div>
+    </>
+  )
+}

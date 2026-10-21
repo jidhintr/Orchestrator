@@ -15,13 +15,95 @@ export interface Role {
   isSystem: boolean
 }
 
+export interface User {
+  id: number
+  firstName: string
+  lastName: string
+  email: string | null
+  mobile: string
+  departments: { id: number; name: string }[]
+  departmentRoles: string[]
+  roles: string[]
+  isActive: boolean
+}
+
+export type ClientTier = 'Normal' | 'Gold' | 'Platinum'
+export type ClientStatus = 'Active' | 'PaymentPending' | 'Suspended' | 'Inactive'
+
+export interface Client {
+  id: number
+  companyName: string
+  contactName: string
+  email: string
+  phone: string
+  shippingAddress: string
+  tier: ClientTier
+  status: ClientStatus
+  tierDiscountPercent: number
+  isActive: boolean
+}
+
+export type ClientInput = Omit<Client, 'id' | 'status' | 'tierDiscountPercent' | 'isActive'>
+
+export interface JobType {
+  id: number
+  name: string
+  description: string | null
+  isActive: boolean
+}
+
+export interface Catalog {
+  id: number
+  sku: string
+  name: string
+  description: string | null
+  basePrice: number
+  catalogDiscountPercent: number
+  laborCost: number
+  commissionPercent: number
+  profitPercent: number
+  isActive: boolean
+  steps: { jobTypeId: number; jobTypeName: string; sequence: number }[]
+}
+
+export type CatalogInput = Omit<Catalog, 'id' | 'isActive' | 'steps'> & { jobTypeIds: number[] }
+
+export interface ApprovalChain {
+  id: number
+  name: string
+  description: string | null
+  isDefault: boolean
+  catalogId: number | null
+  stages: { sequence: number; departmentId: number; departmentName: string }[]
+}
+
+export interface ChainInput {
+  name: string
+  description: string | null
+  departmentIds: number[]
+}
+
 export interface DepartmentInput {
   name: string
   description: string | null
 }
 
+export interface RoleInput {
+  name: string
+  description: string
+}
+
+export interface UserInput {
+  firstName: string
+  lastName: string
+  email: string | null
+  mobile: string
+}
+
 // shortcut: hardcoded dev stand-in for authentication (1 = seeded super admin); remove when auth lands (ADR-0003).
 const ACTING_USER_ID = '1'
+
+const unreachable = 'Cannot reach the API. Is it running on port 5176?'
 
 async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   const response = await fetch(`/api/v1${path}`, {
@@ -32,7 +114,7 @@ async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T>
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   }).catch(() => {
-    throw new Error('Cannot reach the API. Is it running on port 5176?')
+    throw new Error(unreachable)
   })
   if (!response.ok) {
     throw new Error(await problemMessage(response))
@@ -42,7 +124,7 @@ async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T>
 
 async function problemMessage(response: Response): Promise<string> {
   if (response.status === 500 && !response.headers.get('content-type')?.includes('json')) {
-    return 'Cannot reach the API. Is it running on port 5176?'
+    return unreachable
   }
   try {
     const problem = await response.json()
@@ -59,7 +141,44 @@ export const api = {
   create: (input: DepartmentInput & { code: string }) => call<Department>('/departments', 'POST', input),
   update: (id: number, input: DepartmentInput) => call<Department>(`/departments/${id}`, 'PUT', input),
   deactivate: (id: number) => call<void>(`/departments/${id}/deactivate`, 'POST'),
-  roles: (id: number) => call<Role[]>(`/departments/${id}/roles`),
-  assignRoles: (id: number, roles: string[]) => call<Role[]>(`/departments/${id}/roles`, 'PUT', { roles }),
+  departmentRoles: (id: number) => call<Role[]>(`/departments/${id}/roles`),
+  assignDepartmentRoles: (id: number, roles: string[]) => call<Role[]>(`/departments/${id}/roles`, 'PUT', { roles }),
+
+  users: () => call<User[]>('/users'),
+  user: (id: number) => call<User>(`/users/${id}`),
+  createUser: (input: UserInput & { departmentIds?: number[]; roles?: string[] }) => call<User>('/users', 'POST', input),
+  updateUser: (id: number, input: UserInput & { isActive: boolean }) => call<User>(`/users/${id}`, 'PUT', input),
+  assignUserDepartments: (id: number, departmentIds: number[]) => call<User>(`/users/${id}/departments`, 'PUT', { departmentIds }),
+  assignUserRoles: (id: number, roles: string[]) => call<User>(`/users/${id}/roles`, 'PUT', { roles }),
+
   allRoles: () => call<Role[]>('/roles'),
+  role: (id: number) => call<Role>(`/roles/${id}`),
+  roleUsers: (id: number) => call<User[]>(`/roles/${id}/users`),
+  createRole: (input: RoleInput) => call<Role>('/roles', 'POST', input),
+  updateRole: (id: number, input: RoleInput) => call<Role>(`/roles/${id}`, 'PUT', input),
+  disableRole: (id: number) => call<void>(`/roles/${id}/disable`, 'POST'),
+  enableRole: (id: number) => call<void>(`/roles/${id}/enable`, 'POST'),
+  deleteRole: (id: number) => call<void>(`/roles/${id}`, 'DELETE'),
+
+  clients: () => call<Client[]>('/clients'),
+  client: (id: number) => call<Client>(`/clients/${id}`),
+  createClient: (input: ClientInput) => call<Client>('/clients', 'POST', input),
+  updateClient: (id: number, input: ClientInput) => call<Client>(`/clients/${id}`, 'PUT', input),
+  setClientStatus: (id: number, status: ClientStatus) => call<Client>(`/clients/${id}/status`, 'PUT', { status }),
+
+  jobTypes: () => call<JobType[]>('/job-types'),
+
+  catalogs: () => call<Catalog[]>('/catalogs'),
+  catalog: (id: number) => call<Catalog>(`/catalogs/${id}`),
+  createCatalog: (input: CatalogInput) => call<Catalog>('/catalogs', 'POST', input),
+  updateCatalog: (id: number, input: CatalogInput) => call<Catalog>(`/catalogs/${id}`, 'PUT', input),
+  deactivateCatalog: (id: number) => call<void>(`/catalogs/${id}/deactivate`, 'POST'),
+  cloneCatalog: (id: number, sku: string, name: string) => call<Catalog>(`/catalogs/${id}/clone`, 'POST', { sku, name }),
+
+  chains: () => call<ApprovalChain[]>('/approval-chains'),
+  chain: (id: number) => call<ApprovalChain>(`/approval-chains/${id}`),
+  chainForCatalog: (catalogId: number) => call<ApprovalChain>(`/approval-chains/for-catalog/${catalogId}`),
+  createChain: (input: ChainInput & { catalogId: number }) => call<ApprovalChain>('/approval-chains', 'POST', input),
+  updateChain: (id: number, input: ChainInput) => call<ApprovalChain>(`/approval-chains/${id}`, 'PUT', input),
+  deleteChain: (id: number) => call<void>(`/approval-chains/${id}`, 'DELETE'),
 }
