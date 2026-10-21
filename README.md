@@ -1,7 +1,6 @@
 # Orchestrator
 
-.NET 10 API for tracking the assembly line of a printing press, backed by PostgreSQL. A UI (Angular or Node.js,
-**undecided**) will join this solution later. Requirements: [docs/requirements.md](docs/requirements.md).
+.NET 10 API for tracking the assembly line of a printing press, backed by PostgreSQL. A React UI lives in [ui/](ui) (see UI below). Requirements: [docs/requirements.md](docs/requirements.md).
 Decisions: [docs/decisions.md](docs/decisions.md). Instructions for Claude Code: [CLAUDE.md](CLAUDE.md).
 
 **Stack:** ASP.NET Core MVC controllers, EF Core + Npgsql, PostgreSQL 17, OpenAPI + Scalar, Reqnroll (Gherkin) on
@@ -41,3 +40,9 @@ CI (`.github/workflows/ci.yml`): format, build, tests, EF drift check, vulnerabl
 - `port is already allocated`: change `ORCHESTRATOR_API_PORT` in `.env`.
 - Tests cannot start: Docker must be running.
 - Use `dotnet test --solution ...`; xUnit v3 on .NET 10 runs on Microsoft.Testing.Platform.
+
+## UI
+
+`ui/` is a React + TypeScript PWA (Vite). Start the API (port 5176), then `cd ui; npm install; npm run dev`.
+Vite proxies `/api` to the API, so no CORS setup is needed. Only the Departments screen exists; it sends a hardcoded
+`X-Acting-User-Id: 1` (dev only, ADR-0003).

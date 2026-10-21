@@ -1,7 +1,7 @@
 # Orchestrator - Claude Code instructions
 
 .NET 10 API for a printing-press assembly-line tracker, PostgreSQL + EF Core, MVC controllers, Scalar docs.
-UI framework (Angular/Node) is **undecided**. Setup and commands: [README.md](README.md).
+UI: React + Vite PWA in `ui/` (ADR-0004). Setup and commands: [README.md](README.md).
 Requirements and open questions: [docs/requirements.md](docs/requirements.md). Decisions: [docs/decisions.md](docs/decisions.md).
 Continuing prior work: [docs/WORKING-STATE.md](docs/WORKING-STATE.md) (verify against the repo first).
 

@@ -366,3 +366,6 @@ FodyWeavers.xsd
 
 # Reqnroll generated code-behind
 *.feature.cs
+
+# UI build output
+ui/dist/

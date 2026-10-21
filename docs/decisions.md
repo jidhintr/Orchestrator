@@ -50,3 +50,8 @@ Add a short section for each significant choice (context, decision, alternatives
   client registration. Role endpoints beyond CRUD (e.g. approval chains, UI pages) are not modelled.
 - **Consequences:** `users.DepartmentId` was replaced by the join table (migration `UserDepartments` copies existing rows);
   the audit `...ById` columns still have no FK to `users`.
+
+## ADR-0004: UI is React + Vite PWA (2026-10-21, owner)
+- **Decision:** React + TypeScript on Vite in `ui/`, installable as a PWA for phones; Capacitor can wrap it later. SignalR client for phase-3 notifications.
+- **Dev wiring:** Vite proxies `/api` to the API, so the API has no CORS configuration. The UI hardcodes `X-Acting-User-Id: 1` until auth lands.
+- **Rejected:** Angular (more ceremony for a CRUD back office), Flutter/React Native (second toolchain).

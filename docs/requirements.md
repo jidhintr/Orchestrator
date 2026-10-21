@@ -49,7 +49,7 @@ Changes are limited to admins and super admins (acting-user header, ADR-0003).
 ## Open questions (ask the owner, do not guess)
 - Who may call each Department operation; should deactivation be blocked while a department has employees; reactivation?
 - Confirm assumed seed codes and that all six seeded rows are system rows (see decisions).
-- Authentication, Company/tenant model, UI framework, SLOs (k6 thresholds are provisional), deployment target.
+- Authentication, Company/tenant model, SLOs (k6 thresholds are provisional), deployment target.
 - Order, catalog, job-step models, earnings formula, notification channel.
 
 ## Deferred cross-module scenarios (write when Employee and Role modules exist; no placeholders before)
