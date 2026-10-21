@@ -13,6 +13,8 @@ public sealed partial class GlobalExceptionHandler(IProblemDetailsService proble
         var (status, title, detail) = exception switch
         {
             NotFoundException e => (StatusCodes.Status404NotFound, "Resource not found.", e.Message),
+            UnauthorizedException e => (StatusCodes.Status401Unauthorized, "Unauthorized.", e.Message),
+            ForbiddenException e => (StatusCodes.Status403Forbidden, "Forbidden.", e.Message),
             BadRequestException e => (StatusCodes.Status400BadRequest, "Bad request.", e.Message),
             ConflictException e => (StatusCodes.Status409Conflict, "Conflict.", e.Message),
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } } =>

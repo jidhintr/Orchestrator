@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.OpenApi;
+using Orchestrator.Api.Access;
 using Orchestrator.Api.Departments;
 using Orchestrator.Api.Errors;
 using Orchestrator.Api.Middleware;
@@ -16,6 +17,8 @@ public static class ApiServiceCollectionExtensions
         services.AddScoped<DepartmentService>();
         services.AddScoped<UserService>();
         services.AddScoped<RoleService>();
+        services.AddHttpContextAccessor();
+        services.AddScoped<ActingUser>();
 
         services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
         {

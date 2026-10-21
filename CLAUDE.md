@@ -34,7 +34,7 @@ placeholders `{unique}` and `{id}`. Scenarios come from the owner or documented 
 Cover failure paths. Never weaken, skip or delete a scenario to get green.
 
 ## Security
-Auth is undecided: endpoints are anonymous and must say so. No secrets in git (`.env` ignored; connection string via
+Auth is undecided: reads are anonymous and say so; changes use the temporary `X-Acting-User-Id` header (ADR-0003), which is trusted, not secure, and replaced when auth lands. No secrets in git (`.env` ignored; connection string via
 user-secrets or `ConnectionStrings__Orchestrator`). Validate server-side, no string-built SQL, no exception text in 500
 bodies, Scalar/OpenAPI Development-only. The repo creates no Postgres container: the API uses the existing one on host port 5432 (database `OrchStore`, schema `biz`); don't modify or remove that container.
 

@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
+using Orchestrator.Api.Access;
 using Orchestrator.Api.Departments;
 using Orchestrator.Api.Roles;
 
@@ -26,6 +27,9 @@ public sealed class DepartmentsController(DepartmentService departments) : Contr
         await departments.GetAsync(id, cancellationToken);
 
     [HttpPost]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [EndpointSummary("Create a department")]
     [EndpointDescription("Returns 201 with a Location header. 409 when the name (case-insensitive) or code is already used.")]
     [ProducesResponseType<DepartmentResponse>(StatusCodes.Status201Created)]
@@ -38,6 +42,9 @@ public sealed class DepartmentsController(DepartmentService departments) : Contr
     }
 
     [HttpPut("{id:int}")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [EndpointSummary("Update a department")]
     [EndpointDescription("Changes name and description only; the code is immutable. 409 when the name is already used or a system department would be renamed.")]
     [ProducesResponseType<DepartmentResponse>(StatusCodes.Status200OK)]
@@ -48,6 +55,9 @@ public sealed class DepartmentsController(DepartmentService departments) : Contr
         await departments.UpdateAsync(id, request, cancellationToken);
 
     [HttpPost("{id:int}/deactivate")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [EndpointSummary("Deactivate a department")]
     [EndpointDescription("Soft delete: the record is kept with isActive false. 409 for system departments (isSystem true).")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -68,6 +78,9 @@ public sealed class DepartmentsController(DepartmentService departments) : Contr
         await departments.RolesAsync(id, cancellationToken);
 
     [HttpPut("{id:int}/roles")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [EndpointSummary("Assign roles to a department")]
     [EndpointDescription("Replaces the department's roles with the given role names; its users inherit them. 400 when a role does not exist or is disabled.")]
     [ProducesResponseType<IReadOnlyList<RoleResponse>>(StatusCodes.Status200OK)]

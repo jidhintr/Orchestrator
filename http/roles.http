@@ -1,4 +1,4 @@
-### Roles API v1. Anonymous for now (authentication is undecided).
+### Roles API v1. Reads are anonymous; changes send X-Acting-User-Id (temporary stand-in for authentication; 1 = seeded super admin, 2 = seeded admin).
 ### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
 
 ### List all roles
@@ -8,6 +8,7 @@ Accept: application/json
 ### Create a role
 # @name create
 POST {{baseUrl}}/api/v1/roles
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {
@@ -21,6 +22,7 @@ Accept: application/json
 
 ### Update the role
 PUT {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {
@@ -34,6 +36,7 @@ Accept: application/json
 
 ### Assign roles to a user (replaces the user's roles; user 2 = seeded admin)
 PUT {{baseUrl}}/api/v1/users/2/roles
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {
@@ -42,15 +45,19 @@ Content-Type: application/json
 
 ### Disable the role
 POST {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}/disable
+X-Acting-User-Id: 1
 
 ### Enable the role
 POST {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}/enable
+X-Acting-User-Id: 1
 
 ### Failure: roles still assigned cannot be deleted
 DELETE {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}
+X-Acting-User-Id: 1
 
 ### Unassign, then delete the role
 PUT {{baseUrl}}/api/v1/users/2/roles
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {
@@ -59,9 +66,11 @@ Content-Type: application/json
 
 ###
 DELETE {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}
+X-Acting-User-Id: 1
 
 ### Failure: invalid body
 POST {{baseUrl}}/api/v1/roles
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {
@@ -70,6 +79,7 @@ Content-Type: application/json
 
 ### Failure: duplicate name
 POST {{baseUrl}}/api/v1/roles
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {
@@ -79,9 +89,11 @@ Content-Type: application/json
 
 ### Failure: system role cannot be deleted
 DELETE {{baseUrl}}/api/v1/roles/2
+X-Acting-User-Id: 1
 
 ### Failure: assign an unknown role
 PUT {{baseUrl}}/api/v1/users/2/roles
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {

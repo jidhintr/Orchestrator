@@ -56,7 +56,27 @@ public sealed class ApiSteps(ApiContext api)
     public void ThenTheResponseListDoesNotContain(string property, string expected) =>
         Assert.False(ListContains(property, expected), $"Unexpected item with {property} = '{api.Expand(expected)}'.");
 
-    private string? Property(string path)
+    [Then("the response JSON list {string} has an item {string}")]
+    public void ThenTheResponseJsonListHasAnItem(string path, string expected) =>
+        Assert.True(ArrayHas(path, expected), $"No item '{api.Expand(expected)}' in '{path}'.");
+
+    [Then("the response JSON list {string} has no item {string}")]
+    public void ThenTheResponseJsonListHasNoItem(string path, string expected) =>
+        Assert.False(ArrayHas(path, expected), $"Unexpected item '{api.Expand(expected)}' in '{path}'.");
+
+    private bool ArrayHas(string path, string expected)
+    {
+        var node = Node(path);
+        Assert.True(node is { ValueKind: JsonValueKind.Array }, $"'{path}' is not a JSON array.");
+        var wanted = api.Expand(expected);
+        return node!.Value.EnumerateArray().Any(item => item.ValueKind == JsonValueKind.Object
+            ? item.EnumerateObject().Any(p => p.Value.ValueKind == JsonValueKind.String && p.Value.GetString() == wanted)
+            : AsText(item) == wanted);
+    }
+
+    private string? Property(string path) => Node(path) is { } node ? AsText(node) : null;
+
+    private JsonElement? Node(string path)
     {
         var current = api.Json;
         foreach (var name in api.Expand(path).Split('.'))
@@ -71,7 +91,7 @@ public sealed class ApiSteps(ApiContext api)
             }
         }
 
-        return current is null ? null : AsText(current.Value);
+        return current;
     }
 
     private bool ListContains(string property, string expected)

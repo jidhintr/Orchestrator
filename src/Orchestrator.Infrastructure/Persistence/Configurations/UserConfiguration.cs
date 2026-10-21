@@ -16,16 +16,20 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Email).HasMaxLength(254).UseCollation(OrchestratorDbContext.CaseInsensitive);
         builder.Property(u => u.Mobile).HasMaxLength(20);
         builder.HasIndex(u => u.Email).IsUnique();
-        builder.HasOne(u => u.Department).WithMany().HasForeignKey(u => u.DepartmentId).OnDelete(DeleteBehavior.Restrict);
 
         // Placeholder identities pending owner confirmation; ids stay below FirstGeneratedId.
         builder.HasData(
-            Seed(1, "Super", "Admin", "superadmin@orchestrator.local", 1),
-            Seed(2, "Admin", "User", "admin@orchestrator.local", 2));
+            Seed(1, "Super", "Admin", "superadmin@orchestrator.local"),
+            Seed(2, "Admin", "User", "admin@orchestrator.local"));
 
         builder.HasMany(u => u.Roles).WithMany(r => r.Users).UsingEntity(j => j.ToTable("user_roles"));
+        builder.HasMany(u => u.Departments).WithMany(d => d.Users).UsingEntity(j =>
+        {
+            j.ToTable("user_departments");
+            j.HasData(new { UsersId = 1, DepartmentsId = 1 }, new { UsersId = 2, DepartmentsId = 2 });
+        });
     }
 
-    private static object Seed(int id, string firstName, string lastName, string email, int departmentId) =>
-        new { Id = id, FirstName = firstName, LastName = lastName, Email = email, Mobile = "0000000000", DepartmentId = departmentId, IsActive = true, InsertedAt = SeededAt, LastUpdatedAt = SeededAt };
+    private static object Seed(int id, string firstName, string lastName, string email) =>
+        new { Id = id, FirstName = firstName, LastName = lastName, Email = email, Mobile = "0000000000", IsActive = true, InsertedAt = SeededAt, LastUpdatedAt = SeededAt };
 }

@@ -1,4 +1,4 @@
-### Departments API v1. Anonymous for now (authentication is undecided).
+### Departments API v1. Reads are anonymous; changes send X-Acting-User-Id (temporary stand-in for authentication; 1 = seeded super admin, 2 = seeded admin).
 ### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
 
 ### List all departments
@@ -8,6 +8,7 @@ Accept: application/json
 ### Create a department
 # @name create
 POST {{baseUrl}}/api/v1/departments
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {
@@ -22,6 +23,7 @@ Accept: application/json
 
 ### Update name and description (code is immutable)
 PUT {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {
@@ -31,12 +33,14 @@ Content-Type: application/json
 
 ### Deactivate the department (soft delete)
 POST {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}/deactivate
+X-Acting-User-Id: 1
 
 ### List the roles of department 2 (Admin)
 GET {{baseUrl}}/api/v1/departments/2/roles
 
 ### Assign roles to a department (replaces; its users inherit them)
 PUT {{baseUrl}}/api/v1/departments/2/roles
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {
@@ -45,6 +49,7 @@ Content-Type: application/json
 
 ### Failure: department with an unknown role
 PUT {{baseUrl}}/api/v1/departments/2/roles
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {
@@ -53,6 +58,7 @@ Content-Type: application/json
 
 ### Failure: invalid body
 POST {{baseUrl}}/api/v1/departments
+X-Acting-User-Id: 1
 Content-Type: application/json
 
 {

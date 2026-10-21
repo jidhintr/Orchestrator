@@ -11,4 +11,6 @@ public sealed class Department : BaseEntity
     public bool IsSystem { get; init; }
 
     public List<Role> Roles { get; } = [];
+
+    public List<User> Users { get; } = [];
 }

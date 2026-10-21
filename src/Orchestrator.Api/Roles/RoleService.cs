@@ -16,7 +16,7 @@ public sealed class RoleService(OrchestratorDbContext db)
     public async Task<IReadOnlyList<UserResponse>> UsersAsync(int id, CancellationToken cancellationToken)
     {
         await FindAsync(id, cancellationToken);
-        return await db.Users.AsNoTracking().Where(u => u.Roles.Any(r => r.Id == id))
+        return await db.Users.AsNoTracking().Where(u => u.Roles.Any(r => r.Id == id) || u.Departments.Any(d => d.Roles.Any(r => r.Id == id)))
             .OrderBy(u => u.FirstName).ThenBy(u => u.LastName).Select(UserService.Project).ToListAsync(cancellationToken);
     }
 
@@ -64,9 +64,9 @@ public sealed class RoleService(OrchestratorDbContext db)
             throw new ConflictException($"System role '{role.Name}' cannot be deleted.");
         }
 
-        if (await db.Users.AnyAsync(u => u.Roles.Any(r => r.Id == id), cancellationToken))
+        if (await db.Users.AnyAsync(u => u.Roles.Any(r => r.Id == id), cancellationToken) || await db.Departments.AnyAsync(d => d.Roles.Any(r => r.Id == id), cancellationToken))
         {
-            throw new ConflictException($"Role '{role.Name}' is assigned to users; unassign it or disable it instead.");
+            throw new ConflictException($"Role '{role.Name}' is assigned to users or departments; unassign it or disable it instead.");
         }
 
         db.Roles.Remove(role);

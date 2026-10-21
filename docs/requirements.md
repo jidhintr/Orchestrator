@@ -25,14 +25,26 @@ employee earnings.
   progress only; no commission, profit or internal details).
 - UI pages are allowed per department; only super admin / admin assign pages to departments and their managers.
 
+## Users, roles and access rules (owner, 2026-10-21; decided in ADR-0003, specs in `UserAccess.feature`, `Role.feature`)
+1. Admin creates employees; no department given means Unassigned; an employee can be in several departments and hold any roles below Admin.
+2. A manager creates employees in their own department and can unassign them (they stay in Unassigned); a manager only assigns roles that belong to their own departments.
+3. A department's roles apply to everyone in it, including its manager, who may also hold extra roles.
+4. Super Admin or Admin can make anyone a manager and edit roles (Admin never touches admins or super admins).
+5. A user can have several roles.
+6. The Clients department carries the Client role (very limited, read-only on their own orders; orders come in phase 2).
+7. Nobody edits users at or above their own rank; employees edit nobody.
+8. Employee actions (notes, completing orders, notifying managers) are phase 2.
+
 ## Use cases
 **UC-000 Platform health** (technical): `GET /api/health` returns 200 when PostgreSQL is reachable, 503 when not.
 Never a false 200. Body is plain text. Anonymous. Feature: `Health.feature` (also covers the correlation-id header).
 
+**UC-002 Users and who may change whom** (implemented; `UserAccess.feature`) and **UC-003 Roles and department roles** (implemented; `Role.feature`): see the rules above and ADR-0003.
+
 **UC-001 Manage departments** (implemented; `Department.feature`): list, view, create, rename/describe and soft-deactivate
 departments; six system departments are seeded and protected from rename/deactivation. Failures: invalid input -> 400
 (nothing saved), duplicate name/code -> 409, unknown id -> 404, unexpected error -> standard 500 without internals.
-Authorization is not enforced yet (auth undecided).
+Changes are limited to admins and super admins (acting-user header, ADR-0003).
 
 ## Open questions (ask the owner, do not guess)
 - Who may call each Department operation; should deactivation be blocked while a department has employees; reactivation?

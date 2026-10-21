@@ -12,8 +12,9 @@ public sealed class DepartmentSteps(ApiContext api)
     [Given("a department {string} with code {string} exists")]
     public async Task GivenADepartmentExists(string name, string code)
     {
-        await api.SendAsync("POST", "/api/v1/departments", JsonSerializer.Serialize(new { name, code }));
+        await api.SendAsSuperAdminAsync("POST", "/api/v1/departments", JsonSerializer.Serialize(new { name, code }));
         Assert.Equal(201, (int)api.Status);
+        api.Aliases["dept:" + api.Expand(code)] = api.LastId!;
     }
 
     [Given("I have the id of the department with code {string}")]

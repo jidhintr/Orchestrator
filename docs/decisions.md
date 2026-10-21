@@ -26,3 +26,27 @@ Add a short section for each significant choice (context, decision, alternatives
   seeded rows are system rows; code = 2-32 chars of `A-Z0-9_`, immutable; name <= 100, description <= 500;
   no reactivation endpoint; no pagination.
 - **Consequence:** later modules follow this shape; deactivation cannot yet check for employees.
+
+## ADR-0003: Users, departments, roles and who may change whom (2026-10-21, owner)
+- **Model:** a user belongs to one or more departments (`user_departments`); a department carries roles (`department_roles`);
+  a user may also hold extra roles (`user_roles`). Effective roles = department roles + the user's own. Users with no
+  department sit in the seeded system department **Unassigned** (id 7). Seeded roles (ids 1-5): Super Admin, Admin,
+  Manager, Employee, Client; the Clients department carries Client. Only the Super Admin and Admin users/departments
+  are seeded with roles. Fixed ids live in `SystemIds`.
+- **Rank** (from effective roles): Super Admin 4 > Admin 3 > Manager 2 > Employee/Client/custom 1. Nobody changes a user
+  at or above their own rank (a Super Admin may change anyone), and nobody can give a role or department that would lift a
+  user to their own rank or higher. So admins cannot create or edit admins or super admins, and employees and clients
+  change nobody, not even themselves.
+- **Managers:** work only with users who share one of their departments. New users default to the manager's own
+  departments, a manager may only use those departments, and only roles that belong to them (and below Manager).
+  Replacing departments or roles only touches what the manager may assign; the user keeps the rest. Unassigning leaves
+  the user in Unassigned (or their other departments), after which the manager can no longer manage them.
+- **Admin-only:** creating, changing, disabling and deleting roles and departments, and setting a department's roles.
+  Rights are checked before request validation (`[AdminOnly]`). Reads are open.
+- **Acting user (temporary):** until authentication exists, the caller names itself in `X-Acting-User-Id`. Missing,
+  invalid, unknown or inactive -> 401; not allowed -> 403. The header is trusted, so this is NOT security; replace
+  `ActingUser` when auth is decided. Specs default to the seeded super admin (id 1) and switch with `I act as "<name>"`.
+- **Out of scope until phase 2:** orders, notes, completion and notifications; employee read-scoping (own profile only);
+  client registration. Role endpoints beyond CRUD (e.g. approval chains, UI pages) are not modelled.
+- **Consequences:** `users.DepartmentId` was replaced by the join table (migration `UserDepartments` copies existing rows);
+  the audit `...ById` columns still have no FK to `users`.

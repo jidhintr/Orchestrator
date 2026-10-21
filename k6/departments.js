@@ -9,7 +9,7 @@ export const options = buildOptions();
 http.setResponseCallback(http.expectedStatuses({ min: 200, max: 299 }, 404));
 
 const API = `${BASE_URL}/api/v1/departments`;
-const json = { headers: { 'Content-Type': 'application/json' } };
+const json = { headers: { 'Content-Type': 'application/json', 'X-Acting-User-Id': '1' } };
 
 export default function () {
   const suffix = `${__VU}X${__ITER}X${Date.now().toString(36).toUpperCase()}`;
@@ -31,7 +31,7 @@ export default function () {
     'update: 200': (r) => r.status === 200,
   });
   check(http.get(`${API}/2/roles`), { 'department roles: 200': (r) => r.status === 200 });
-  check(http.post(`${API}/${id}/deactivate`), { 'deactivate: 204': (r) => r.status === 204 });
+  check(http.post(`${API}/${id}/deactivate`, null, json), { 'deactivate: 204': (r) => r.status === 204 });
   check(http.get(`${API}/999999`), { 'unknown id: 404': (r) => r.status === 404 });
 
   sleep(1);

@@ -9,7 +9,7 @@ export const options = buildOptions();
 http.setResponseCallback(http.expectedStatuses({ min: 200, max: 299 }, 400, 404, 409));
 
 const API = `${BASE_URL}/api/v1/roles`;
-const json = { headers: { 'Content-Type': 'application/json' } };
+const json = { headers: { 'Content-Type': 'application/json', 'X-Acting-User-Id': '1' } };
 
 export default function () {
   const suffix = `${__VU}x${__ITER}x${Date.now().toString(36)}`;
@@ -30,11 +30,11 @@ export default function () {
   check(http.get(`${API}/${id}`), { 'get: 200': (r) => r.status === 200 });
   check(http.get(`${API}/${id}/users`), { 'users: 200': (r) => r.status === 200 });
   check(http.put(`${API}/${id}`, JSON.stringify({ name, description: 'k6 updated' }), json), { 'update: 200': (r) => r.status === 200 });
-  check(http.post(`${API}/${id}/disable`), { 'disable: 204': (r) => r.status === 204 });
-  check(http.post(`${API}/${id}/enable`), { 'enable: 204': (r) => r.status === 204 });
+  check(http.post(`${API}/${id}/disable`, null, json), { 'disable: 204': (r) => r.status === 204 });
+  check(http.post(`${API}/${id}/enable`, null, json), { 'enable: 204': (r) => r.status === 204 });
   check(http.post(API, JSON.stringify({ name, description: 'k6' }), json), { 'duplicate name: 409': (r) => r.status === 409 });
-  check(http.del(`${API}/2`), { 'system role delete: 409': (r) => r.status === 409 });
-  check(http.del(`${API}/${id}`), { 'delete: 204': (r) => r.status === 204 });
+  check(http.del(`${API}/2`, null, json), { 'system role delete: 409': (r) => r.status === 409 });
+  check(http.del(`${API}/${id}`, null, json), { 'delete: 204': (r) => r.status === 204 });
   check(http.get(`${API}/999999`), { 'unknown id: 404': (r) => r.status === 404 });
 
   sleep(1);

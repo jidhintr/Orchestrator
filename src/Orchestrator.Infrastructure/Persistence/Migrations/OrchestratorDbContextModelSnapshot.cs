@@ -48,6 +48,38 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         {
                             DepartmentsId = 2,
                             RolesId = 2
+                        },
+                        new
+                        {
+                            DepartmentsId = 6,
+                            RolesId = 5
+                        });
+                });
+
+            modelBuilder.Entity("DepartmentUser", b =>
+                {
+                    b.Property<int>("DepartmentsId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UsersId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("DepartmentsId", "UsersId");
+
+                    b.HasIndex("UsersId");
+
+                    b.ToTable("user_departments", "biz");
+
+                    b.HasData(
+                        new
+                        {
+                            DepartmentsId = 1,
+                            UsersId = 1
+                        },
+                        new
+                        {
+                            DepartmentsId = 2,
+                            UsersId = 2
                         });
                 });
 
@@ -163,6 +195,16 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                             IsSystem = true,
                             LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Clients"
+                        },
+                        new
+                        {
+                            Id = 7,
+                            Code = "UNASSIGNED",
+                            InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            IsSystem = true,
+                            LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "Unassigned"
                         });
                 });
 
@@ -273,9 +315,6 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
                     NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
 
-                    b.Property<int>("DepartmentId")
-                        .HasColumnType("integer");
-
                     b.Property<string>("Email")
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)")
@@ -313,8 +352,6 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DepartmentId");
-
                     b.HasIndex("Email")
                         .IsUnique();
 
@@ -324,7 +361,6 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 1,
-                            DepartmentId = 1,
                             Email = "superadmin@orchestrator.local",
                             FirstName = "Super",
                             InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -336,7 +372,6 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         new
                         {
                             Id = 2,
-                            DepartmentId = 2,
                             Email = "admin@orchestrator.local",
                             FirstName = "Admin",
                             InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -377,15 +412,19 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.User", b =>
+            modelBuilder.Entity("DepartmentUser", b =>
                 {
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.Department", "Department")
+                    b.HasOne("Orchestrator.Infrastructure.Persistence.Department", null)
                         .WithMany()
-                        .HasForeignKey("DepartmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasForeignKey("DepartmentsId")
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("Department");
+                    b.HasOne("Orchestrator.Infrastructure.Persistence.User", null)
+                        .WithMany()
+                        .HasForeignKey("UsersId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("RoleUser", b =>

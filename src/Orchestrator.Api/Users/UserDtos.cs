@@ -16,10 +16,9 @@ public sealed record CreateUserRequest
     [Required, StringLength(20, MinimumLength = 5), RegularExpression(@"^\+?[0-9]+$")]
     public required string Mobile { get; init; }
 
-    public required int DepartmentId { get; init; }
+    public List<int>? DepartmentIds { get; init; }
 
-    [Required, MinLength(1)]
-    public required List<string> Roles { get; init; }
+    public List<string>? Roles { get; init; }
 }
 
 public sealed record UpdateUserRequest
@@ -36,12 +35,24 @@ public sealed record UpdateUserRequest
     [Required, StringLength(20, MinimumLength = 5), RegularExpression(@"^\+?[0-9]+$")]
     public required string Mobile { get; init; }
 
-    public required int DepartmentId { get; init; }
-
-    [Required, MinLength(1)]
-    public required List<string> Roles { get; init; }
-
     public required bool IsActive { get; init; }
 }
 
-public sealed record UserResponse(int Id, string FirstName, string LastName, string? Email, string Mobile, int DepartmentId, string DepartmentName, IReadOnlyList<string> DepartmentRoles, IReadOnlyList<string> Roles, bool IsActive);
+public sealed record AssignDepartmentsRequest
+{
+    [Required]
+    public required List<int> DepartmentIds { get; init; }
+}
+
+public sealed record DepartmentRef(int Id, string Name);
+
+public sealed record UserResponse(
+    int Id,
+    string FirstName,
+    string LastName,
+    string? Email,
+    string Mobile,
+    IReadOnlyList<DepartmentRef> Departments,
+    IReadOnlyList<string> DepartmentRoles,
+    IReadOnlyList<string> Roles,
+    bool IsActive);

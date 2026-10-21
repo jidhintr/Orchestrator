@@ -24,12 +24,13 @@ internal sealed class DepartmentConfiguration : IEntityTypeConfiguration<Departm
             Seed(3, "Accounts", "ACCOUNTS"),
             Seed(4, "QA", "QA"),
             Seed(5, "Delivery", "DELIVERY"),
-            Seed(6, "Clients", "CLIENTS"));
+            Seed(6, "Clients", "CLIENTS"),
+            Seed(7, "Unassigned", "UNASSIGNED"));
 
         builder.HasMany(d => d.Roles).WithMany(r => r.Departments).UsingEntity(j =>
         {
             j.ToTable("department_roles");
-            j.HasData(new { DepartmentsId = 1, RolesId = 1 }, new { DepartmentsId = 2, RolesId = 2 });
+            j.HasData(new { DepartmentsId = 1, RolesId = 1 }, new { DepartmentsId = 2, RolesId = 2 }, new { DepartmentsId = 6, RolesId = 5 });
         });
     }
 

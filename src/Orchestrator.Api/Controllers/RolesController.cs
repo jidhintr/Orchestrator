@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
+using Orchestrator.Api.Access;
 using Orchestrator.Api.Roles;
 using Orchestrator.Api.Users;
 
@@ -33,6 +34,9 @@ public sealed class RolesController(RoleService roles) : ControllerBase
         await roles.UsersAsync(id, cancellationToken);
 
     [HttpPost]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [EndpointSummary("Create a role")]
     [EndpointDescription("Returns 201 with a Location header. 409 when the name (case-insensitive) is already used.")]
     [ProducesResponseType<RoleResponse>(StatusCodes.Status201Created)]
@@ -45,6 +49,9 @@ public sealed class RolesController(RoleService roles) : ControllerBase
     }
 
     [HttpPut("{id:int}")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [EndpointSummary("Update a role")]
     [EndpointDescription("409 when the name is already used or a system role would be renamed.")]
     [ProducesResponseType<RoleResponse>(StatusCodes.Status200OK)]
@@ -55,6 +62,9 @@ public sealed class RolesController(RoleService roles) : ControllerBase
         await roles.UpdateAsync(id, request, cancellationToken);
 
     [HttpPost("{id:int}/disable")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [EndpointSummary("Disable a role")]
     [EndpointDescription("A disabled role cannot be assigned to users; existing assignments are kept. 409 for system roles.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -67,6 +77,9 @@ public sealed class RolesController(RoleService roles) : ControllerBase
     }
 
     [HttpPost("{id:int}/enable")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [EndpointSummary("Enable a role")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
@@ -77,6 +90,9 @@ public sealed class RolesController(RoleService roles) : ControllerBase
     }
 
     [HttpDelete("{id:int}")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [EndpointSummary("Delete a role")]
     [EndpointDescription("Permanent. 409 for system roles and for roles still assigned to users.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]

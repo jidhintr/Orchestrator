@@ -19,6 +19,6 @@ public sealed record RoleResponse(int Id, string Name, string Description, bool 
 
 public sealed record AssignRolesRequest
 {
-    [Required, MinLength(1)]
+    [Required]
     public required List<string> Roles { get; init; }
 }

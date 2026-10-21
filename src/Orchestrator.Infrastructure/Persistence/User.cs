@@ -10,9 +10,7 @@ public sealed class User : BaseEntity
 
     public required string Mobile { get; set; }
 
-    public int DepartmentId { get; set; }
-
-    public Department? Department { get; set; }
+    public List<Department> Departments { get; } = [];
 
     public List<Role> Roles { get; } = [];
 }
