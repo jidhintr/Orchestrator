@@ -1,0 +1,48 @@
+### Departments API v1. Anonymous for now (authentication is undecided).
+### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### List all departments
+GET {{baseUrl}}/api/v1/departments
+Accept: application/json
+
+### Create a department
+# @name create
+POST {{baseUrl}}/api/v1/departments
+Content-Type: application/json
+
+{
+  "name": "Cutting",
+  "code": "CUTTING",
+  "description": "Cuts printed sheets"
+}
+
+### Get the department created above
+GET {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}
+Accept: application/json
+
+### Update name and description (code is immutable)
+PUT {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "name": "Cutting and Trimming",
+  "description": "Cuts and trims printed sheets"
+}
+
+### Deactivate the department (soft delete)
+POST {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}/deactivate
+
+### Failure: invalid body
+POST {{baseUrl}}/api/v1/departments
+Content-Type: application/json
+
+{
+  "name": "",
+  "code": "bad code"
+}
+
+### Failure: unknown department
+GET {{baseUrl}}/api/v1/departments/999999
+
+### Failure: unknown API version
+GET {{baseUrl}}/api/v2/departments

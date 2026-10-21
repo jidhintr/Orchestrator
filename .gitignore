@@ -363,3 +363,6 @@ MigrationBackup/
 FodyWeavers.xsd
 # Local environment
 .env
+
+# Reqnroll generated code-behind
+*.feature.cs
