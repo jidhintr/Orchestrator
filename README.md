@@ -44,5 +44,6 @@ CI (`.github/workflows/ci.yml`): format, build, tests, EF drift check, vulnerabl
 ## UI
 
 `ui/` is a React + TypeScript PWA (Vite). Start the API (port 5176), then `cd ui; npm install; npm run dev`.
-Vite proxies `/api` to the API, so no CORS setup is needed. Only the Departments screen exists; it sends a hardcoded
+Vite proxies `/api` to the API, so no CORS setup is needed. Screens: Departments, Users, Roles, Clients, Catalogs and Approvals (left nav on desktop, bottom tabs on phones), each with search and status/type/department/role filters.
+Filters run in the browser on the full list (the API has no pagination yet). Every request sends a hardcoded
 `X-Acting-User-Id: 1` (dev only, ADR-0003).

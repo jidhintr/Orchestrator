@@ -369,3 +369,4 @@ FodyWeavers.xsd
 
 # UI build output
 ui/dist/
+ui/*.tsbuildinfo
