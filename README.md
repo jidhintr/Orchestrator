@@ -10,14 +10,15 @@ xUnit v3 + Testcontainers, k6, `.http` files, GitHub Actions.
 
 ## Run
 ```bash
-echo ORCHESTRATOR_DB_PASSWORD=<password> > .env   # gitignored; port defaults to 5433
-docker compose up -d --wait postgres
-dotnet user-secrets set "ConnectionStrings:Orchestrator" "Host=localhost;Port=5433;Database=orchestrator;Username=orchestrator;Password=<.env password>" --project src/Orchestrator.Api
+echo ORCHESTRATOR_HOST_DB_PASSWORD=<sa password> > .env   # gitignored
+docker compose up -d --build            # API on http://localhost:8080, needs your Postgres container on host port 5432
+dotnet user-secrets set "ConnectionStrings:Orchestrator" "Host=localhost;Port=5432;Database=OrchStore;Username=sa;Password=<sa password>" --project src/Orchestrator.Api
 dotnet ef database update --project src/Orchestrator.Infrastructure --startup-project src/Orchestrator.Api
 dotnet run --project src/Orchestrator.Api --launch-profile http
 ```
+Tables live in schema `biz`. The compose `api` service migrates at startup (`MigrateOnStartup=true`); a plain `dotnet run` does not.
 API http://localhost:5176, docs (Scalar, Development only) http://localhost:5176/scalar/v1.
-Requests: open `http/*.http` and pick the `local` environment. Migrations are applied at startup only when `MigrateOnStartup=true` (set for the `api` compose service, which uses database `OrchStore`, schema `biz`, user `sa`, password `ORCHESTRATOR_HOST_DB_PASSWORD` in `.env`).
+Requests: open `http/*.http` and pick the `local` environment.
 
 ## Check
 ```bash
@@ -37,6 +38,6 @@ CI (`.github/workflows/ci.yml`): format, build, tests, EF drift check, vulnerabl
 | `http/`, `k6/` | Request files and load scripts, kept in sync with endpoints |
 
 ## Troubleshooting
-- `port is already allocated`: change `ORCHESTRATOR_DB_PORT` in `.env`.
+- `port is already allocated`: change `ORCHESTRATOR_API_PORT` in `.env`.
 - Tests cannot start: Docker must be running.
 - Use `dotnet test --solution ...`; xUnit v3 on .NET 10 runs on Microsoft.Testing.Platform.
