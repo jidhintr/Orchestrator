@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using Microsoft.AspNetCore.OpenApi;
 using Orchestrator.Api.Departments;
 using Orchestrator.Api.Errors;
 using Orchestrator.Api.Middleware;
@@ -36,6 +37,16 @@ public static class ApiServiceCollectionExtensions
                 options.SubstituteApiVersionInUrl = true;
             })
             .AddOpenApi();
+
+        services.Configure<OpenApiOptions>("v1", options => options.AddDocumentTransformer((document, _, _) =>
+            {
+                document.Info.Description =
+                    "No authentication yet: all endpoints are anonymous. Errors are application/problem+json " +
+                    "(status, title, detail, traceId, correlationId; 400 adds an errors map). " +
+                    "Send an optional X-Correlation-Id header (letters, digits, . _ -; max 64) and it is echoed back, " +
+                    "otherwise one is generated. The API version is part of the URL (/api/v1/...).";
+                return Task.CompletedTask;
+            }));
 
         return services;
     }

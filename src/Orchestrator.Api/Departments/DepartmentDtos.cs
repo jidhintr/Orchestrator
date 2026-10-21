@@ -3,14 +3,26 @@ using Orchestrator.Infrastructure.Persistence;
 
 namespace Orchestrator.Api.Departments;
 
-public sealed record CreateDepartmentRequest(
-    [Required, StringLength(100, MinimumLength = 1)] string Name,
-    [Required, StringLength(32, MinimumLength = 2), RegularExpression("^[A-Z0-9_]+$")] string Code,
-    [StringLength(500)] string? Description);
+public sealed record CreateDepartmentRequest
+{
+    [Required, StringLength(100, MinimumLength = 1)]
+    public required string Name { get; init; }
 
-public sealed record UpdateDepartmentRequest(
-    [Required, StringLength(100, MinimumLength = 1)] string Name,
-    [StringLength(500)] string? Description);
+    [Required, StringLength(32, MinimumLength = 2), RegularExpression("^[A-Z0-9_]+$")]
+    public required string Code { get; init; }
+
+    [StringLength(500)]
+    public string? Description { get; init; }
+}
+
+public sealed record UpdateDepartmentRequest
+{
+    [Required, StringLength(100, MinimumLength = 1)]
+    public required string Name { get; init; }
+
+    [StringLength(500)]
+    public string? Description { get; init; }
+}
 
 public sealed record DepartmentResponse(int Id, string Name, string Code, string? Description, bool IsActive, bool IsSystem)
 {

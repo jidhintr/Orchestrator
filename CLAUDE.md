@@ -24,7 +24,7 @@ Keep classes small; no placeholder files, new packages or abstractions without a
 Data model: every entity inherits `BaseEntity` (int identity PK from 1000, audit columns, `IsActive`); relate tables by PK/FK only. Details in `.claude/rules/coding-standards.md`.
 
 ## Every endpoint change (scoped rule: `.claude/rules/api-artifacts.md`)
-Controller + `[ProducesResponseType]` for every status (feeds Scalar) -> `http/<resource>.http` -> `k6/<resource>.js` ->
+Controller + `[EndpointSummary]` + `[ProducesResponseType]` for every status (feeds Scalar) -> `http/<resource>.http` -> `k6/<resource>.js` ->
 Gherkin scenarios tagged `@UC-xxx`. Incomplete if any is missing. Use `/feature-checklist` for a full feature.
 
 ## Testing (owner decision: BDD only for now)

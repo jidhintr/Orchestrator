@@ -9,8 +9,8 @@ paths:
 
 An endpoint change is **not done** until all four are updated.
 
-1. **Scalar/OpenAPI** - versioned route; no XML doc comments;
-   `[ProducesResponseType<T>(status)]` for every status it can return.
+1. **Scalar/OpenAPI** - versioned route; no XML doc comments. Per action: `[EndpointSummary("...")]` (one line), `[EndpointDescription("...")]` only for non-obvious behavior (409 reasons, immutability, soft delete);
+   `[ProducesResponseType<T>(status)]` for every status it can return. Request DTOs are records with `required` init properties and DataAnnotations on the properties (not constructor parameters) so limits show in the schema.
    Verify `/openapi/v1.json` lists the endpoint. This is the API contract; do not duplicate it in Markdown.
 2. **`http/<resource>.http`** - one file per controller; a `###` title per request;
    success AND failure examples; `{{baseUrl}}` from `http/http-client.env.json`; no secrets or tokens.

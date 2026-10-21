@@ -16,7 +16,7 @@ paths:
 - Accept `CancellationToken` on every async action and I/O method.
 - Errors: throw `NotFoundException` / `ConflictException`; `GlobalExceptionHandler` maps them (and DB unique violations)
   to problem+json. Never swallow exceptions, never put exception text in 500 bodies.
-- Validation attributes go on record constructor parameters, not `[property:]` (MVC throws at runtime).
+- Request DTOs: records with `required` init properties; DataAnnotations on the properties (constructor-parameter attributes are invisible to OpenAPI).
 - EF: one `IEntityTypeConfiguration<T>` per entity; let the database enforce uniqueness (unique indexes, the
   `case_insensitive` collation) instead of pre-check queries; never edit an applied migration; no destructive migration
   without approval. Generated migration files are exempt from analyzers.
