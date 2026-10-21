@@ -56,3 +56,14 @@ Add a short section for each significant choice (context, decision, alternatives
 - **Dev wiring:** Vite proxies `/api` to the API, so the API has no CORS configuration. The UI hardcodes `X-Acting-User-Id: 1` until auth lands.
 - **Filtering:** client-side over the full list (no pagination in the API); move to query parameters when pagination lands.
 - **Rejected:** Angular (more ceremony for a CRUD back office), Flutter/React Native (second toolchain).
+
+## ADR-0004: Four-project clean architecture (2026-10-22, owner)
+- **Context:** Infrastructure held entities, DbContext, EF configuration and migrations while Api held controllers plus every
+  service, DTO and access rule, so both grew heavy (supersedes the "Application/Domain removed" note in ADR-0001).
+- **Decision:** `Domain` (entities, `SystemIds`, `Rank`) <- `Application` (services, DTOs, `IAppDbContext`, `ICurrentUserId`,
+  `ActingUser`, exceptions) <- `Infrastructure` (`OrchestratorDbContext`, configurations, migrations, `AddInfrastructure`);
+  `Api` composes them. `HttpCurrentUserId` (reads `X-Acting-User-Id`) lives in Api; Postgres unique/FK violations are translated to
+  `ConflictException`/`BadRequestException` in `OrchestratorDbContext.SaveChangesAsync`, so Api has no Npgsql dependency.
+- **Consequences:** Application still uses EF Core abstractions (`Include`, `ToListAsync`) but no provider; no repository layer.
+  Domain enums carry a `System.Text.Json` converter attribute. Migrations keep their namespace; only the model snapshot's entity
+  type names changed to `Orchestrator.Domain.*` (no schema change; `has-pending-model-changes` is clean).

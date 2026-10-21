@@ -2,7 +2,7 @@
 
 Short-lived. Delete or rewrite when the work it describes is done. Decisions live in `decisions.md`, open questions in `requirements.md`.
 
-**Status:** Departments (UC-001), users with multi-department/roles/rank rules (UC-002) and roles (UC-003) implemented; 89 scenarios pass.
+**Status:** Four-project split done (ADR-0004); all 131 scenarios pass.
 Migrations through `UserDepartments` exist; apply them to the dev database with `dotnet ef database update`.
 
 **Database:** the existing Postgres container on host port 5432, database `OrchStore`, schema `biz`, user `sa`. The repo ships no Postgres container.

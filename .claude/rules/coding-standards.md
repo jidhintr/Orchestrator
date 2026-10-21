@@ -7,9 +7,9 @@ paths:
 
 - Style is enforced by `.editorconfig`, analyzers and `TreatWarningsAsErrors`; run `dotnet format` instead of debating style.
 - File-scoped namespaces, nullable enabled, `sealed` classes, primary constructors for DI.
-- Two projects: `Orchestrator.Api` (controllers, per-resource service + DTOs, errors, middleware) references
-  `Orchestrator.Infrastructure` (entities, `DbContext`, EF configuration, migrations). Add a Domain/Application layer only
-  when real business logic outgrows the per-resource service, and record it in `docs/decisions.md`.
+- Four projects (ADR-0004): `Domain` (entities, rank rules, no packages) <- `Application` (per-resource service + DTOs, `IAppDbContext`,
+  exceptions; EF Core abstractions but no provider) <- `Infrastructure` (`DbContext`, EF configuration, migrations, Postgres error
+  translation); `Api` (controllers, middleware, `GlobalExceptionHandler`) references Application and Infrastructure. Never reference upward.
 - Controllers: one per resource in `Api/Controllers`, `[ApiController]`, thin: call the resource's service. DTOs are
   records next to the service; never return EF entities over HTTP.
 - Routes are versioned: `[ApiVersion(n)]` + `api/v{version:apiVersion}/<resource>`.

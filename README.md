@@ -31,8 +31,10 @@ CI (`.github/workflows/ci.yml`): format, build, tests, EF drift check, vulnerabl
 ## Layout
 | Path | Purpose |
 |---|---|
-| `src/Orchestrator.Api` | Controllers, a service and DTOs per resource, middleware, error handling, versioning, OpenAPI/Scalar |
-| `src/Orchestrator.Infrastructure` | Entities, `DbContext`, EF configuration, seed, migrations |
+| `src/Orchestrator.Domain` | Entities, `BaseEntity`, `SystemIds`, `Rank` (no dependencies) |
+| `src/Orchestrator.Application` | A service and DTOs per resource, `IAppDbContext`, acting-user rules, exceptions |
+| `src/Orchestrator.Infrastructure` | `DbContext`, EF configuration, seed, migrations, Postgres wiring |
+| `src/Orchestrator.Api` | Controllers, middleware, error handling, versioning, OpenAPI/Scalar |
 | `tests/Orchestrator.Specs` | Gherkin `Features/`, `StepDefinitions/`, `Support/ApiHost` (API + Postgres container) |
 | `http/`, `k6/` | Request files and load scripts, kept in sync with endpoints |
 

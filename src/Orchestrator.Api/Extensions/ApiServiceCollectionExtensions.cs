@@ -1,15 +1,10 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.OpenApi;
 using Orchestrator.Api.Access;
-using Orchestrator.Api.ApprovalChains;
-using Orchestrator.Api.Catalogs;
-using Orchestrator.Api.Clients;
-using Orchestrator.Api.Departments;
 using Orchestrator.Api.Errors;
-using Orchestrator.Api.JobTypes;
 using Orchestrator.Api.Middleware;
-using Orchestrator.Api.Roles;
-using Orchestrator.Api.Users;
+using Orchestrator.Application;
+using Orchestrator.Application.Access;
 
 namespace Orchestrator.Api.Extensions;
 
@@ -18,15 +13,9 @@ public static class ApiServiceCollectionExtensions
     public static IServiceCollection AddApiPlatform(this IServiceCollection services)
     {
         services.AddControllers();
-        services.AddScoped<DepartmentService>();
-        services.AddScoped<UserService>();
-        services.AddScoped<RoleService>();
-        services.AddScoped<CatalogService>();
-        services.AddScoped<ClientService>();
-        services.AddScoped<ApprovalChainService>();
-        services.AddScoped<JobTypeService>();
         services.AddHttpContextAccessor();
-        services.AddScoped<ActingUser>();
+        services.AddScoped<ICurrentUserId, HttpCurrentUserId>();
+        services.AddApplication();
 
         services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
         {

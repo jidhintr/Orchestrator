@@ -17,8 +17,10 @@ If a requirement, business rule, name, SLO, auth choice or technology is not in 
 Do not invent use cases, thresholds or architecture. Record answers in `docs/requirements.md`; significant choices in `docs/decisions.md`.
 
 ## Structure
-`src/Orchestrator.Api` (controllers, a service + DTOs per resource, errors, middleware) -> `src/Orchestrator.Infrastructure`
-(entities, `DbContext`, EF config, seed, migrations); `tests/Orchestrator.Specs`; `http/`; `k6/`.
+Four projects, dependencies point inward: `Orchestrator.Domain` (entities, `BaseEntity`, `SystemIds`, `Rank`; no packages) <-
+`Orchestrator.Application` (a service + DTOs per resource, `IAppDbContext`, `ActingUser`, exceptions) <- `Orchestrator.Infrastructure`
+(`DbContext`, EF config, seed, migrations, DI) ; `Orchestrator.Api` (controllers, middleware, error handler, OpenAPI) composes them.
+Also `tests/Orchestrator.Specs`; `http/`; `k6/`.
 Detailed code rules: `.claude/rules/coding-standards.md` (loads for `src/**/*.cs`).
 Keep classes small; no placeholder files, new packages or abstractions without a concrete need.
 Data model: every entity inherits `BaseEntity` (int identity PK from 1000, audit columns, `IsActive`); relate tables by PK/FK only. Details in `.claude/rules/coding-standards.md`.

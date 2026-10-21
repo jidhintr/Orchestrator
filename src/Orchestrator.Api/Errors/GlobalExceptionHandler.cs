@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Npgsql;
+using Orchestrator.Application.Errors;
 
 namespace Orchestrator.Api.Errors;
 
@@ -17,10 +16,6 @@ public sealed partial class GlobalExceptionHandler(IProblemDetailsService proble
             ForbiddenException e => (StatusCodes.Status403Forbidden, "Forbidden.", e.Message),
             BadRequestException e => (StatusCodes.Status400BadRequest, "Bad request.", e.Message),
             ConflictException e => (StatusCodes.Status409Conflict, "Conflict.", e.Message),
-            DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } } =>
-                (StatusCodes.Status409Conflict, "Conflict.", "A record with the same unique value already exists."),
-            DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation } } =>
-                (StatusCodes.Status400BadRequest, "Bad request.", "A referenced record does not exist."),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.", (string?)null),
         };
 

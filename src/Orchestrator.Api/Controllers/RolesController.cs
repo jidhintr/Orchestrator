@@ -1,8 +1,8 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Orchestrator.Api.Access;
-using Orchestrator.Api.Roles;
-using Orchestrator.Api.Users;
+using Orchestrator.Application.Roles;
+using Orchestrator.Application.Users;
 
 namespace Orchestrator.Api.Controllers;
 

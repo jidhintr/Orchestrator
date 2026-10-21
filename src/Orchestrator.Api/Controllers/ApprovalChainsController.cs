@@ -1,7 +1,7 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Orchestrator.Api.Access;
-using Orchestrator.Api.ApprovalChains;
+using Orchestrator.Application.ApprovalChains;
 
 namespace Orchestrator.Api.Controllers;
 

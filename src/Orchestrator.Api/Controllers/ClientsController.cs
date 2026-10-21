@@ -1,6 +1,6 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
-using Orchestrator.Api.Clients;
+using Orchestrator.Application.Clients;
 
 namespace Orchestrator.Api.Controllers;
 

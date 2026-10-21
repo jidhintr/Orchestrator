@@ -49,8 +49,13 @@ export interface JobType {
   id: number
   name: string
   description: string | null
+  laborCost: number | null
+  commissionPercent: number | null
+  profitPercent: number | null
   isActive: boolean
 }
+
+export type JobTypeInput = Omit<JobType, 'id' | 'isActive'>
 
 export interface Catalog {
   id: number
@@ -101,9 +106,23 @@ export interface UserInput {
 }
 
 // shortcut: hardcoded dev stand-in for authentication (1 = seeded super admin); remove when auth lands (ADR-0003).
-const ACTING_USER_ID = '1'
+export const ACTING_USER_ID = '1'
 
-const unreachable = 'Cannot reach the API. Is it running on port 5176?'
+export class ServiceError extends Error {
+  constructor(readonly kind: 'offline' | 'server', readonly reference?: string) {
+    super('The service is unavailable. Try again in a moment.')
+  }
+}
+
+let report: (e: ServiceError) => void = () => undefined
+export const onServiceError = (fn: (e: ServiceError) => void) => {
+  report = fn
+}
+
+const fail = (e: ServiceError) => {
+  report(e)
+  return e
+}
 
 async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
   const response = await fetch(`/api/v1${path}`, {
@@ -114,8 +133,12 @@ async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T>
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   }).catch(() => {
-    throw new Error(unreachable)
+    throw fail(new ServiceError('offline'))
   })
+  if (response.status >= 500) {
+    const problem = response.headers.get('content-type')?.includes('json') ? await response.json().catch(() => null) : null
+    throw fail(new ServiceError(problem ? 'server' : 'offline', typeof problem?.correlationId === 'string' ? problem.correlationId : undefined))
+  }
   if (!response.ok) {
     throw new Error(await problemMessage(response))
   }
@@ -123,9 +146,6 @@ async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T>
 }
 
 async function problemMessage(response: Response): Promise<string> {
-  if (response.status === 500 && !response.headers.get('content-type')?.includes('json')) {
-    return unreachable
-  }
   try {
     const problem = await response.json()
     const fields = Object.values((problem.errors ?? {}) as Record<string, string[]>).flat()
@@ -167,6 +187,11 @@ export const api = {
   setClientStatus: (id: number, status: ClientStatus) => call<Client>(`/clients/${id}/status`, 'PUT', { status }),
 
   jobTypes: () => call<JobType[]>('/job-types'),
+  jobType: (id: number) => call<JobType>(`/job-types/${id}`),
+  jobTypeCatalogs: (id: number) => call<Catalog[]>(`/job-types/${id}/catalogs`),
+  createJobType: (input: JobTypeInput) => call<JobType>('/job-types', 'POST', input),
+  updateJobType: (id: number, input: JobTypeInput) => call<JobType>(`/job-types/${id}`, 'PUT', input),
+  deactivateJobType: (id: number) => call<void>(`/job-types/${id}/deactivate`, 'POST'),
 
   catalogs: () => call<Catalog[]>('/catalogs'),
   catalog: (id: number) => call<Catalog>(`/catalogs/${id}`),

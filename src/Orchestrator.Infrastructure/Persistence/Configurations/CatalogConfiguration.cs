@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Orchestrator.Domain;
 
 namespace Orchestrator.Infrastructure.Persistence.Configurations;
 

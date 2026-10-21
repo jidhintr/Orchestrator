@@ -2,6 +2,8 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 COPY global.json Directory.Build.props Orchestrator.slnx .editorconfig ./
 COPY src/Orchestrator.Api/Orchestrator.Api.csproj src/Orchestrator.Api/
+COPY src/Orchestrator.Domain/Orchestrator.Domain.csproj src/Orchestrator.Domain/
+COPY src/Orchestrator.Application/Orchestrator.Application.csproj src/Orchestrator.Application/
 COPY src/Orchestrator.Infrastructure/Orchestrator.Infrastructure.csproj src/Orchestrator.Infrastructure/
 RUN dotnet restore src/Orchestrator.Api
 COPY src src

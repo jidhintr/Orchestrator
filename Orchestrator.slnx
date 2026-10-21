@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Orchestrator.Api/Orchestrator.Api.csproj" />
+    <Project Path="src/Orchestrator.Application/Orchestrator.Application.csproj" />
+    <Project Path="src/Orchestrator.Domain/Orchestrator.Domain.csproj" />
     <Project Path="src/Orchestrator.Infrastructure/Orchestrator.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">

@@ -1,16 +1,17 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, type Role, type User } from './api'
-import { Avatar, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, useList, useRunner, useToast } from './ui'
+import { Avatar, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, locked, useList, useRunner, useToast, Form, Submit } from './ui'
 
-type Panel = { mode: 'create' } | { mode: 'detail'; id: number } | null
+type Panel = { mode: 'create' } | { mode: 'detail'; id: number; edit?: boolean } | null
 
 export function Roles() {
   const { items, error, load } = useList(api.allRoles)
   const [panel, setPanel] = useState<Panel>(null)
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('enabled')
+  const [status, setStatus] = useState('all')
   const [type, setType] = useState('all')
   const [toast, notify] = useToast()
+  const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = () => setPanel(null)
   const saved = (text: string) => {
@@ -23,14 +24,14 @@ export function Roles() {
     (status === 'all' || (status === 'enabled') === r.isActive) &&
     (type === 'all' || (type === 'system') === r.isSystem) &&
     matches(query, r.name, r.description))
-  const dirty = query !== '' || status !== 'enabled' || type !== 'all'
+  const dirty = query !== '' || status !== 'all' || type !== 'all'
 
   return (
     <Page title="Roles" subtitle="What people may do. Assigned to departments and users."
       action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New role</button>}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name or description"
-        onClear={() => { setQuery(''); setStatus('enabled'); setType('all') }}>
+        onClear={() => { setQuery(''); setStatus('all'); setType('all') }}>
         <Select label="Status" value={status} onChange={setStatus} options={[['enabled', 'Enabled'], ['disabled', 'Disabled'], ['all', 'All']]} />
         <Select label="Type" value={type} onChange={setType} options={[['all', 'All'], ['system', 'System'], ['custom', 'Custom']]} />
       </Filters>
@@ -38,20 +39,21 @@ export function Roles() {
       {visible?.length === 0 && <p className="empty">{items?.length ? 'No roles match the filters.' : 'No roles yet.'}</p>}
       {visible && visible.length > 0 && (
         <table>
-          <thead><tr><th>Name</th><th>Description</th><th>Status</th></tr></thead>
+          <thead><tr><th>Name</th><th>Description</th><th>Status</th><th><span className="sr">Actions</span></th></tr></thead>
           <tbody>
             {visible.map((r) => (
               <tr key={r.id}>
-                <td data-label="Name"><button className="link" onClick={() => setPanel({ mode: 'detail', id: r.id })}>{r.name}</button></td>
+                <td data-label="Name"><button className="link" onClick={() => open({ mode: 'detail', id: r.id })}>{r.name}</button></td>
                 <td data-label="Description" className={r.description ? undefined : 'none'}>{r.description}</td>
                 <td data-label="Status"><StatusBadges active={r.isActive} system={r.isSystem} activeLabel="Enabled" inactiveLabel="Disabled" /></td>
+                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${r.name}`} onClick={() => setPanel({ mode: 'detail', id: r.id, edit: true })}><Icon name="edit" />Edit</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New role" onClose={close}><CreateForm onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title="Role" onClose={close}><Detail id={panel.id} onChanged={saved} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit role' : 'Role'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )
@@ -67,22 +69,22 @@ function CreateForm({ onDone, onCancel }: { onDone: (text: string) => void; onCa
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const input = fields(e.currentTarget)
-    void run(async () => {
+    return run(async () => {
       await api.createRole(input)
       onDone('Role created.')
     })
   }
   return (
-    <form onSubmit={submit}>
+    <Form onSubmit={submit}>
       <label>Name<input name="name" required minLength={2} maxLength={50} autoFocus /></label>
       <label>Description<textarea name="description" maxLength={500} /></label>
       {feedback}
-      <div className="actions"><button type="submit">Create</button><button type="button" className="secondary" onClick={onCancel}>Cancel</button></div>
-    </form>
+      <div className="actions"><Submit>Create</Submit><button type="button" className="secondary" onClick={onCancel}>Cancel</button></div>
+    </Form>
   )
 }
 
-function Detail({ id, onChanged, onClose }: { id: number; onChanged: (text: string) => void; onClose: () => void }) {
+function Detail({ id, onChanged, onSaved, onClose }: { onSaved: () => void; id: number; onChanged: (text: string) => void; onClose: () => void }) {
   const [role, setRole] = useState<Role | null>(null)
   const [users, setUsers] = useState<User[]>([])
   const { run, feedback, error, setError } = useRunner()
@@ -101,6 +103,7 @@ function Detail({ id, onChanged, onClose }: { id: number; onChanged: (text: stri
     const input = fields(e.currentTarget)
     return run(async () => {
       setRole(await api.updateRole(id, input))
+      onSaved()
     }, 'Saved.')
   }
 
@@ -112,7 +115,7 @@ function Detail({ id, onChanged, onClose }: { id: number; onChanged: (text: stri
 
   const remove = () => {
     if (role && window.confirm(`Permanently delete ${role.name}?`)) {
-      void run(async () => {
+      return run(async () => {
         await api.deleteRole(id)
         onChanged('Role deleted.')
       })
@@ -124,11 +127,11 @@ function Detail({ id, onChanged, onClose }: { id: number; onChanged: (text: stri
   return (
     <>
       <p className="meta"><StatusBadges active={role.isActive} system={role.isSystem} activeLabel="Enabled" inactiveLabel="Disabled" /></p>
-      <form onSubmit={save} key={role.name + role.description}>
+      <Form onSubmit={save} requireChange key={role.name + role.description}>
         <label>Name<input name="name" required minLength={2} maxLength={50} defaultValue={role.name} /></label>
         <label>Description<textarea name="description" maxLength={500} defaultValue={role.description} /></label>
-        <div className="actions"><button type="submit">Save details</button></div>
-      </form>
+        <div className="actions"><Submit>Save details</Submit></div>
+      </Form>
       <fieldset>
         <legend>Users with this role ({users.length})</legend>
         {users.length === 0 && <p className="muted">Nobody yet.</p>}

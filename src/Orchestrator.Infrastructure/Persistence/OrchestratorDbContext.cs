@@ -1,8 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
+using Orchestrator.Application;
+using Orchestrator.Application.Errors;
+using Orchestrator.Domain;
 
 namespace Orchestrator.Infrastructure.Persistence;
 
-public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext> options) : DbContext(options)
+public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext> options) : DbContext(options), IAppDbContext
 {
     public const string Schema = "biz";
     public const string CaseInsensitive = "case_insensitive";
@@ -43,7 +47,7 @@ public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext
         }
     }
 
-    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    public override async Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         var now = DateTime.UtcNow;
         foreach (var entry in ChangeTracker.Entries<BaseEntity>())
@@ -59,6 +63,17 @@ public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext
             }
         }
 
-        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        try
+        {
+            return await base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
+        {
+            throw new ConflictException("A record with the same unique value already exists.");
+        }
+        catch (DbUpdateException e) when (e.InnerException is PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation })
+        {
+            throw new BadRequestException("A referenced record does not exist.");
+        }
     }
 }

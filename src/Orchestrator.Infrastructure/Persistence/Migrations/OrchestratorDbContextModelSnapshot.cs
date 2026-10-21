@@ -83,7 +83,7 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.ApprovalChain", b =>
+            modelBuilder.Entity("Orchestrator.Domain.ApprovalChain", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -145,7 +145,7 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.ApprovalChainStage", b =>
+            modelBuilder.Entity("Orchestrator.Domain.ApprovalChainStage", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -187,7 +187,7 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.ToTable("approval_chain_stages", "biz");
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Catalog", b =>
+            modelBuilder.Entity("Orchestrator.Domain.Catalog", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -254,7 +254,7 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.ToTable("catalogs", "biz");
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.CatalogJobStep", b =>
+            modelBuilder.Entity("Orchestrator.Domain.CatalogJobStep", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -296,7 +296,7 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.ToTable("catalog_job_steps", "biz");
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Client", b =>
+            modelBuilder.Entity("Orchestrator.Domain.Client", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -368,7 +368,7 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.ToTable("clients", "biz");
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Department", b =>
+            modelBuilder.Entity("Orchestrator.Domain.Department", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -493,7 +493,7 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.JobType", b =>
+            modelBuilder.Entity("Orchestrator.Domain.JobType", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -581,7 +581,7 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Order", b =>
+            modelBuilder.Entity("Orchestrator.Domain.Order", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -615,7 +615,7 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.ToTable("orders", "biz");
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Role", b =>
+            modelBuilder.Entity("Orchestrator.Domain.Role", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -713,7 +713,7 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         });
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.User", b =>
+            modelBuilder.Entity("Orchestrator.Domain.User", b =>
                 {
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
@@ -806,13 +806,13 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("DepartmentRole", b =>
                 {
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.Department", null)
+                    b.HasOne("Orchestrator.Domain.Department", null)
                         .WithMany()
                         .HasForeignKey("DepartmentsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.Role", null)
+                    b.HasOne("Orchestrator.Domain.Role", null)
                         .WithMany()
                         .HasForeignKey("RolesId")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -821,22 +821,22 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("DepartmentUser", b =>
                 {
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.Department", null)
+                    b.HasOne("Orchestrator.Domain.Department", null)
                         .WithMany()
                         .HasForeignKey("DepartmentsId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.User", null)
+                    b.HasOne("Orchestrator.Domain.User", null)
                         .WithMany()
                         .HasForeignKey("UsersId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.ApprovalChain", b =>
+            modelBuilder.Entity("Orchestrator.Domain.ApprovalChain", b =>
                 {
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.Catalog", "Catalog")
+                    b.HasOne("Orchestrator.Domain.Catalog", "Catalog")
                         .WithMany()
                         .HasForeignKey("CatalogId")
                         .OnDelete(DeleteBehavior.Cascade);
@@ -844,15 +844,15 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.Navigation("Catalog");
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.ApprovalChainStage", b =>
+            modelBuilder.Entity("Orchestrator.Domain.ApprovalChainStage", b =>
                 {
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.ApprovalChain", null)
+                    b.HasOne("Orchestrator.Domain.ApprovalChain", null)
                         .WithMany("Stages")
                         .HasForeignKey("ApprovalChainId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.Department", "Department")
+                    b.HasOne("Orchestrator.Domain.Department", "Department")
                         .WithMany()
                         .HasForeignKey("DepartmentId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -861,15 +861,15 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.Navigation("Department");
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.CatalogJobStep", b =>
+            modelBuilder.Entity("Orchestrator.Domain.CatalogJobStep", b =>
                 {
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.Catalog", null)
+                    b.HasOne("Orchestrator.Domain.Catalog", null)
                         .WithMany("CatalogJobSteps")
                         .HasForeignKey("CatalogId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.JobType", "JobType")
+                    b.HasOne("Orchestrator.Domain.JobType", "JobType")
                         .WithMany()
                         .HasForeignKey("JobTypeId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -878,9 +878,9 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.Navigation("JobType");
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Order", b =>
+            modelBuilder.Entity("Orchestrator.Domain.Order", b =>
                 {
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.Catalog", "Catalog")
+                    b.HasOne("Orchestrator.Domain.Catalog", "Catalog")
                         .WithMany()
                         .HasForeignKey("CatalogId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -891,25 +891,25 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("RoleUser", b =>
                 {
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.Role", null)
+                    b.HasOne("Orchestrator.Domain.Role", null)
                         .WithMany()
                         .HasForeignKey("RolesId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Orchestrator.Infrastructure.Persistence.User", null)
+                    b.HasOne("Orchestrator.Domain.User", null)
                         .WithMany()
                         .HasForeignKey("UsersId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.ApprovalChain", b =>
+            modelBuilder.Entity("Orchestrator.Domain.ApprovalChain", b =>
                 {
                     b.Navigation("Stages");
                 });
 
-            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Catalog", b =>
+            modelBuilder.Entity("Orchestrator.Domain.Catalog", b =>
                 {
                     b.Navigation("CatalogJobSteps");
                 });

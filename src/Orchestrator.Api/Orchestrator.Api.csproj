@@ -16,6 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Orchestrator.Application\Orchestrator.Application.csproj" />
     <ProjectReference Include="..\Orchestrator.Infrastructure\Orchestrator.Infrastructure.csproj" />
   </ItemGroup>
 

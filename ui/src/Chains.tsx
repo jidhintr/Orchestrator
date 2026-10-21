@@ -1,8 +1,8 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, type ApprovalChain, type Catalog, type Department } from './api'
-import { Badge, Chips, Filters, Icon, matches, message, Modal, OrderedPicker, Page, Select, useList, useRunner, useToast } from './ui'
+import { Badge, Timeline, Filters, Icon, matches, message, Modal, OrderedPicker, Page, Select, locked, useList, useRunner, useToast, Form, Submit } from './ui'
 
-type Panel = { mode: 'create' } | { mode: 'detail'; id: number } | null
+type Panel = { mode: 'create' } | { mode: 'detail'; id: number; edit?: boolean } | null
 type Lookups = { catalogs: Catalog[]; departments: Department[] }
 
 function useLookups(): Lookups {
@@ -23,6 +23,7 @@ export function Chains() {
   const [scope, setScope] = useState('all')
   const [department, setDepartment] = useState('all')
   const [toast, notify] = useToast()
+  const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = () => setPanel(null)
   const saved = (text: string) => {
@@ -50,20 +51,21 @@ export function Chains() {
       {visible?.length === 0 && <p className="empty">{items?.length ? 'No chains match the filters.' : 'No chains yet.'}</p>}
       {visible && visible.length > 0 && (
         <table>
-          <thead><tr><th>Chain</th><th>Applies to</th><th>Stages</th></tr></thead>
+          <thead><tr><th>Chain</th><th>Applies to</th><th>Stages</th><th><span className="sr">Actions</span></th></tr></thead>
           <tbody>
             {visible.map((c) => (
               <tr key={c.id}>
-                <td data-label="Chain"><button className="link" onClick={() => setPanel({ mode: 'detail', id: c.id })}>{c.name}</button></td>
+                <td data-label="Chain"><button className="link" onClick={() => open({ mode: 'detail', id: c.id })}>{c.name}</button></td>
                 <td data-label="Applies to">{c.isDefault ? <Badge>Default</Badge> : catalogName(lookups, c.catalogId)}</td>
-                <td data-label="Stages"><Chips items={c.stages.map((s) => `${s.sequence}. ${s.departmentName}`)} empty="No stages" /></td>
+                <td data-label="Stages"><Timeline items={c.stages.map((s) => s.departmentName)} empty="No stages" /></td>
+                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${c.name}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New approval chain" onClose={close}><CreateForm lookups={lookups} onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title="Approval chain" onClose={close}><Detail id={panel.id} lookups={lookups} onChanged={saved} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit approval chain' : 'Approval chain'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} lookups={lookups} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )
@@ -93,18 +95,18 @@ function CreateForm({ lookups, onDone, onCancel }: { lookups: Lookups; onDone: (
     e.preventDefault()
     const catalogId = Number(new FormData(e.currentTarget).get('catalogId'))
     const input = read(e.currentTarget)
-    void run(async () => {
+    return run(async () => {
       await api.createChain({ ...input, catalogId, departmentIds: stages })
       onDone('Approval chain created.')
     })
   }
 
   return (
-    <form onSubmit={submit}>
+    <Form onSubmit={submit}>
       <ChainFields />
       <label>Catalog
         <select name="catalogId" required defaultValue="">
-          <option value="" disabled>Choose a catalog</option>
+          <option value="" disabled>-- Select --</option>
           {lookups.catalogs.filter((c) => c.isActive).map((c) => <option key={c.id} value={c.id}>{c.name} ({c.sku})</option>)}
         </select>
       </label>
@@ -112,12 +114,12 @@ function CreateForm({ lookups, onDone, onCancel }: { lookups: Lookups; onDone: (
         <OrderedPicker label="Add a department" options={departmentOptions(lookups)} value={stages} onChange={setStages} empty="Add at least one department." />
       </fieldset>
       {feedback}
-      <div className="actions"><button type="submit" disabled={stages.length === 0}>Create</button><button type="button" className="secondary" onClick={onCancel}>Cancel</button></div>
-    </form>
+      <div className="actions"><Submit disabled={stages.length === 0}>Create</Submit><button type="button" className="secondary" onClick={onCancel}>Cancel</button></div>
+    </Form>
   )
 }
 
-function Detail({ id, lookups, onChanged, onClose }: { id: number; lookups: Lookups; onChanged: (text: string) => void; onClose: () => void }) {
+function Detail({ id, lookups, onChanged, onSaved, onClose }: { onSaved: () => void; id: number; lookups: Lookups; onChanged: (text: string) => void; onClose: () => void }) {
   const [chain, setChain] = useState<ApprovalChain | null>(null)
   const [stages, setStages] = useState<number[]>([])
   const { run, feedback, error, setError } = useRunner()
@@ -136,12 +138,13 @@ function Detail({ id, lookups, onChanged, onClose }: { id: number; lookups: Look
       const updated = await api.updateChain(id, { ...input, departmentIds: stages })
       setChain(updated)
       setStages(updated.stages.map((s) => s.departmentId))
+      onSaved()
     }, 'Saved.')
   }
 
   const remove = () => {
     if (chain && window.confirm(`Delete ${chain.name}? Its catalog goes back to the default chain.`)) {
-      void run(async () => {
+      return run(async () => {
         await api.deleteChain(id)
         onChanged('Approval chain deleted.')
       })
@@ -158,13 +161,13 @@ function Detail({ id, lookups, onChanged, onClose }: { id: number; lookups: Look
   return (
     <>
       <p className="meta">{chain.isDefault ? <Badge>Default chain</Badge> : <Badge kind="muted">{catalogName(lookups, chain.catalogId)}</Badge>}</p>
-      <form onSubmit={save} key={JSON.stringify(chain)}>
+      <Form onSubmit={save} requireChange changed={JSON.stringify(stages) !== JSON.stringify(chain.stages.map((s) => s.departmentId))} key={JSON.stringify(chain)}>
         <ChainFields chain={chain} />
         <fieldset><legend>Approving departments in order</legend>
           <OrderedPicker label="Add a department" options={options} value={stages} onChange={setStages} empty="Add at least one department." />
         </fieldset>
-        <div className="actions"><button type="submit" disabled={stages.length === 0}>Save chain</button></div>
-      </form>
+        <div className="actions"><Submit disabled={stages.length === 0}>Save chain</Submit></div>
+      </Form>
       {feedback}
       <div className="actions">
         <button className="danger" disabled={chain.isDefault} onClick={remove}>Delete</button>

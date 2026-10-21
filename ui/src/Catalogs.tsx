@@ -1,8 +1,8 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, type ApprovalChain, type Catalog, type CatalogInput, type JobType } from './api'
-import { Badge, Chips, Filters, Icon, matches, message, Modal, OrderedPicker, Page, Select, StatusBadges, useList, useRunner, useToast } from './ui'
+import { Badge, Timeline, Filters, Icon, matches, message, Modal, OrderedPicker, Page, Select, StatusBadges, locked, useList, useRunner, useToast, Form, Submit } from './ui'
 
-type Panel = { mode: 'create' } | { mode: 'detail'; id: number } | null
+type Panel = { mode: 'create' } | { mode: 'detail'; id: number; edit?: boolean } | null
 
 const num = (v: FormDataEntryValue | null) => Number(v)
 const money = (n: number) => n.toFixed(2)
@@ -20,9 +20,10 @@ export function Catalogs() {
   const jobTypes = useJobTypes()
   const [panel, setPanel] = useState<Panel>(null)
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('active')
+  const [status, setStatus] = useState('all')
   const [jobType, setJobType] = useState('all')
   const [toast, notify] = useToast()
+  const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = () => setPanel(null)
   const saved = (text: string) => {
@@ -35,14 +36,14 @@ export function Catalogs() {
     (status === 'all' || (status === 'active') === c.isActive) &&
     (jobType === 'all' || c.steps.some((s) => String(s.jobTypeId) === jobType)) &&
     matches(query, c.sku, c.name, c.description))
-  const dirty = query !== '' || status !== 'active' || jobType !== 'all'
+  const dirty = query !== '' || status !== 'all' || jobType !== 'all'
 
   return (
     <Page title="Catalogs" subtitle="Products, pricing and the job steps each one goes through."
       action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New catalog</button>}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search SKU, name or description"
-        onClear={() => { setQuery(''); setStatus('active'); setJobType('all') }}>
+        onClear={() => { setQuery(''); setStatus('all'); setJobType('all') }}>
         <Select label="Status" value={status} onChange={setStatus} options={[['active', 'Active'], ['inactive', 'Inactive'], ['all', 'All']]} />
         <Select label="Job type" value={jobType} onChange={setJobType} options={[['all', 'All'], ...jobTypes.map((j): [string, string] => [String(j.id), j.name])]} />
       </Filters>
@@ -50,34 +51,35 @@ export function Catalogs() {
       {visible?.length === 0 && <p className="empty">{items?.length ? 'No catalogs match the filters.' : 'No catalogs yet.'}</p>}
       {visible && visible.length > 0 && (
         <table>
-          <thead><tr><th>Catalog</th><th>SKU</th><th>Base price</th><th>Steps</th><th>Status</th></tr></thead>
+          <thead><tr><th>Catalog</th><th>SKU</th><th>Base price</th><th>Steps</th><th>Status</th><th><span className="sr">Actions</span></th></tr></thead>
           <tbody>
             {visible.map((c) => (
               <tr key={c.id}>
-                <td data-label="Catalog"><button className="link" onClick={() => setPanel({ mode: 'detail', id: c.id })}>{c.name}</button></td>
+                <td data-label="Catalog"><button className="link" onClick={() => open({ mode: 'detail', id: c.id })}>{c.name}</button></td>
                 <td data-label="SKU"><code>{c.sku}</code></td>
                 <td data-label="Base price">{money(c.basePrice)}</td>
-                <td data-label="Steps"><Chips items={c.steps.map((s) => `${s.sequence}. ${s.jobTypeName}`)} /></td>
+                <td data-label="Steps"><Timeline items={c.steps.map((s) => s.jobTypeName)} /></td>
                 <td data-label="Status"><StatusBadges active={c.isActive} /></td>
+                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${c.name}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New catalog" onClose={close}><CreateForm jobTypes={jobTypes} onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title="Catalog" onClose={close}><Detail id={panel.id} jobTypes={jobTypes} onChanged={saved} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit catalog' : 'Catalog'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} jobTypes={jobTypes} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )
 }
 
-function CatalogForm({ catalog, jobTypes, submitLabel, onSubmit, children }: { catalog?: Catalog; jobTypes: JobType[]; submitLabel: string; onSubmit: (input: CatalogInput) => void; children?: React.ReactNode }) {
+function CatalogForm({ catalog, jobTypes, submitLabel, onSubmit, children }: { catalog?: Catalog; jobTypes: JobType[]; submitLabel: string; onSubmit: (input: CatalogInput) => unknown; children?: React.ReactNode }) {
   const [steps, setSteps] = useState<number[]>(catalog?.steps.map((s) => s.jobTypeId) ?? [])
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const d = new FormData(e.currentTarget)
-    onSubmit({
+    return onSubmit({
       sku: String(d.get('sku')).trim(),
       name: String(d.get('name')).trim(),
       description: String(d.get('description')).trim() || null,
@@ -95,7 +97,7 @@ function CatalogForm({ catalog, jobTypes, submitLabel, onSubmit, children }: { c
   )
 
   return (
-    <form onSubmit={submit}>
+    <Form onSubmit={submit} requireChange={!!catalog} changed={!!catalog && JSON.stringify(steps) !== JSON.stringify(catalog.steps.map((s) => s.jobTypeId))}>
       <div className="row">
         <label>SKU<input name="sku" required minLength={3} maxLength={50} defaultValue={catalog?.sku} autoFocus /></label>
         <label>Name<input name="name" required minLength={3} maxLength={150} defaultValue={catalog?.name} /></label>
@@ -109,15 +111,15 @@ function CatalogForm({ catalog, jobTypes, submitLabel, onSubmit, children }: { c
         <OrderedPicker label="Add a job type" options={jobTypes.filter((j) => j.isActive).map((j) => ({ id: j.id, label: j.name }))} value={steps} onChange={setSteps} empty="Add at least one job type." />
       </fieldset>
       {children}
-      <div className="actions"><button type="submit" disabled={steps.length === 0}>{submitLabel}</button></div>
-    </form>
+      <div className="actions"><Submit disabled={steps.length === 0}>{submitLabel}</Submit></div>
+    </Form>
   )
 }
 
 function CreateForm({ jobTypes, onDone, onCancel }: { jobTypes: JobType[]; onDone: (text: string) => void; onCancel: () => void }) {
   const { run, feedback } = useRunner()
   return (
-    <CatalogForm jobTypes={jobTypes} submitLabel="Create" onSubmit={(input) => void run(async () => {
+    <CatalogForm jobTypes={jobTypes} submitLabel="Create" onSubmit={(input) => run(async () => {
       await api.createCatalog(input)
       onDone('Catalog created.')
     })}>
@@ -127,7 +129,7 @@ function CreateForm({ jobTypes, onDone, onCancel }: { jobTypes: JobType[]; onDon
   )
 }
 
-function Detail({ id, jobTypes, onChanged, onClose }: { id: number; jobTypes: JobType[]; onChanged: (text: string) => void; onClose: () => void }) {
+function Detail({ id, jobTypes, onChanged, onSaved, onClose }: { onSaved: () => void; id: number; jobTypes: JobType[]; onChanged: (text: string) => void; onClose: () => void }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [chain, setChain] = useState<ApprovalChain | null>(null)
   const [cloning, setCloning] = useState(false)
@@ -154,7 +156,7 @@ function Detail({ id, jobTypes, onChanged, onClose }: { id: number; jobTypes: Jo
   const clone = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const d = new FormData(e.currentTarget)
-    void run(async () => {
+    return run(async () => {
       await api.cloneCatalog(id, String(d.get('sku')).trim(), String(d.get('name')).trim())
       onChanged('Catalog cloned.')
     })
@@ -166,16 +168,16 @@ function Detail({ id, jobTypes, onChanged, onClose }: { id: number; jobTypes: Jo
     <>
       <p className="meta"><code>{catalog.sku}</code><StatusBadges active={catalog.isActive} />{chain && <Badge kind="muted">{chain.isDefault ? 'Default approval chain' : `Chain: ${chain.name}`}</Badge>}</p>
       <CatalogForm key={JSON.stringify(catalog)} catalog={catalog} jobTypes={jobTypes} submitLabel="Save catalog"
-        onSubmit={(input) => void run(async () => setCatalog(await api.updateCatalog(id, input)), 'Saved.')} />
-      {chain && <fieldset><legend>Approval stages</legend><Chips items={chain.stages.map((s) => `${s.sequence}. ${s.departmentName}`)} empty="No approval stages" /></fieldset>}
+        onSubmit={(input) => run(async () => { setCatalog(await api.updateCatalog(id, input)); onSaved() }, 'Saved.')} />
+      {chain && <fieldset><legend>Approval stages</legend><Timeline items={chain.stages.map((s) => s.departmentName)} empty="No approval stages" /></fieldset>}
       {cloning && (
-        <form onSubmit={clone}>
+        <Form onSubmit={clone}>
           <div className="row">
             <label>New SKU<input name="sku" required minLength={3} maxLength={50} autoFocus /></label>
             <label>New name<input name="name" required minLength={3} maxLength={150} /></label>
           </div>
-          <div className="actions"><button type="submit">Create clone</button><button type="button" className="secondary" onClick={() => setCloning(false)}>Cancel</button></div>
-        </form>
+          <div className="actions"><Submit>Create clone</Submit><button type="button" className="secondary" onClick={() => setCloning(false)}>Cancel</button></div>
+        </Form>
       )}
       {feedback}
       <div className="actions">

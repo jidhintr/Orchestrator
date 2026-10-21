@@ -163,3 +163,40 @@ Feature: Role management and department roles
       { "name": "Ghost {unique}", "description": "x" }
       """
     Then the response is a problem with status 401
+
+  Scenario Outline: An admin cannot hand a department admin-level roles
+    Given I act as "Admin"
+    When I send a PUT request to "/api/v1/departments/{dept:PRS{unique}}/roles" with body:
+      """
+      { "roles": ["<role>"] }
+      """
+    Then the response is a problem with status 403
+
+    Examples:
+      | role        |
+      | Admin       |
+      | Super Admin |
+
+  Scenario Outline: An admin cannot change the roles of the Admin or Super Admin departments
+    Given I act as "Admin"
+    When I send a PUT request to "/api/v1/departments/<department>/roles" with body:
+      """
+      { "roles": ["Employee"] }
+      """
+    Then the response is a problem with status 403
+    When I send a GET request to "/api/v1/users/{user:Admin}"
+    Then the response JSON list "departmentRoles" has an item "Admin"
+
+    Examples:
+      | department          |
+      | {dept:ADMIN}        |
+      | {dept:SUPER_ADMIN}  |
+
+  Scenario: A super admin can give a department admin-level roles
+    Given I act as "SA"
+    When I send a PUT request to "/api/v1/departments/{dept:PRS{unique}}/roles" with body:
+      """
+      { "roles": ["Admin"] }
+      """
+    Then the response status is 200
+    And the response list contains an item where "name" is "Admin"

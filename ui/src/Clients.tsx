@@ -1,8 +1,8 @@
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, type Client, type ClientInput, type ClientStatus, type ClientTier } from './api'
-import { Badge, Filters, Icon, matches, message, Modal, Page, Select, useList, useRunner, useToast } from './ui'
+import { Badge, Filters, Icon, matches, message, Modal, Page, Select, locked, useList, useRunner, useToast, Form, Submit } from './ui'
 
-type Panel = { mode: 'create' } | { mode: 'detail'; id: number } | null
+type Panel = { mode: 'create' } | { mode: 'detail'; id: number; edit?: boolean } | null
 
 const statuses: ClientStatus[] = ['Active', 'PaymentPending', 'Suspended', 'Inactive']
 const tiers: ClientTier[] = ['Normal', 'Gold', 'Platinum']
@@ -18,6 +18,7 @@ export function Clients() {
   const [status, setStatus] = useState('all')
   const [tier, setTier] = useState('all')
   const [toast, notify] = useToast()
+  const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = () => setPanel(null)
   const saved = (text: string) => {
@@ -45,22 +46,23 @@ export function Clients() {
       {visible?.length === 0 && <p className="empty">{items?.length ? 'No clients match the filters.' : 'No clients yet.'}</p>}
       {visible && visible.length > 0 && (
         <table>
-          <thead><tr><th>Company</th><th>Contact</th><th>Tier</th><th>Discount</th><th>Status</th></tr></thead>
+          <thead><tr><th>Company</th><th>Contact</th><th>Tier</th><th>Discount</th><th>Status</th><th><span className="sr">Actions</span></th></tr></thead>
           <tbody>
             {visible.map((c) => (
               <tr key={c.id}>
-                <td data-label="Company"><button className="link" onClick={() => setPanel({ mode: 'detail', id: c.id })}>{c.companyName}</button></td>
+                <td data-label="Company"><button className="link" onClick={() => open({ mode: 'detail', id: c.id })}>{c.companyName}</button></td>
                 <td data-label="Contact"><span className="stack"><span>{c.contactName}</span><span className="muted">{c.email}</span></span></td>
                 <td data-label="Tier"><Badge kind={c.tier === 'Normal' ? 'muted' : 'info'}>{c.tier}</Badge></td>
                 <td data-label="Discount">{c.tierDiscountPercent}%</td>
                 <td data-label="Status"><StatusBadge status={c.status} /></td>
+                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${c.companyName}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New client" onClose={close}><CreateForm onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title="Client" onClose={close}><Detail id={panel.id} onChanged={() => void load()} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit client' : 'Client'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} onChanged={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )
@@ -78,7 +80,7 @@ function Fields({ client }: { client?: Client }) {
       <label>Company name<input name="companyName" required minLength={2} maxLength={150} defaultValue={client?.companyName} autoFocus /></label>
       <div className="row">
         <label>Contact name<input name="contactName" required minLength={2} maxLength={100} defaultValue={client?.contactName} /></label>
-        <label>Tier<select name="tier" defaultValue={client?.tier ?? 'Normal'}>{tiers.map((t) => <option key={t}>{t}</option>)}</select></label>
+        <label>Tier<select name="tier" required defaultValue={client?.tier ?? ''}><option value="" disabled>-- Select --</option>{tiers.map((t) => <option key={t}>{t}</option>)}</select></label>
       </div>
       <div className="row">
         <label>Email<input name="email" type="email" required minLength={5} maxLength={100} defaultValue={client?.email} /></label>
@@ -94,24 +96,24 @@ function CreateForm({ onDone, onCancel }: { onDone: (text: string) => void; onCa
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const input = read(e.currentTarget)
-    void run(async () => {
+    return run(async () => {
       await api.createClient(input)
       onDone('Client created.')
     })
   }
   return (
-    <form onSubmit={submit}>
+    <Form onSubmit={submit}>
       <Fields />
       {feedback}
-      <div className="actions"><button type="submit">Create</button><button type="button" className="secondary" onClick={onCancel}>Cancel</button></div>
-    </form>
+      <div className="actions"><Submit>Create</Submit><button type="button" className="secondary" onClick={onCancel}>Cancel</button></div>
+    </Form>
   )
 }
 
 function Detail({ id, onChanged, onClose }: { id: number; onChanged: () => void; onClose: () => void }) {
   const [client, setClient] = useState<Client | null>(null)
   const [status, setStatus] = useState<ClientStatus>('Active')
-  const { run, feedback, error, setError } = useRunner()
+  const { run, feedback, error, setError, busy } = useRunner()
 
   const apply = (c: Client) => {
     setClient(c)
@@ -137,14 +139,14 @@ function Detail({ id, onChanged, onClose }: { id: number; onChanged: () => void;
   return (
     <>
       <p className="meta"><strong>{client.companyName}</strong><StatusBadge status={client.status} /><Badge kind="muted">Discount {client.tierDiscountPercent}%</Badge></p>
-      <form onSubmit={save} key={JSON.stringify(client)}>
+      <Form onSubmit={save} requireChange key={JSON.stringify(client)}>
         <Fields client={client} />
-        <div className="actions"><button type="submit">Save details</button></div>
-      </form>
+        <div className="actions"><Submit>Save details</Submit></div>
+      </Form>
       <fieldset>
         <legend>Account status</legend>
         <label>Status<select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as ClientStatus)}>{statuses.map((s) => <option key={s} value={s}>{label(s)}</option>)}</select></label>
-        <div className="actions"><button disabled={status === client.status} onClick={() => run(async () => apply(await api.setClientStatus(id, status)), 'Status saved.')}>Save status</button></div>
+        <div className="actions"><button disabled={busy || status === client.status} onClick={() => run(async () => apply(await api.setClientStatus(id, status)), 'Status saved.')}>Save status</button></div>
       </fieldset>
       {feedback}
       <div className="actions"><button className="secondary" onClick={onClose}>Close</button></div>

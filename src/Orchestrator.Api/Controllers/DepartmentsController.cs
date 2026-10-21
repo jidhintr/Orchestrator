@@ -1,8 +1,8 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Orchestrator.Api.Access;
-using Orchestrator.Api.Departments;
-using Orchestrator.Api.Roles;
+using Orchestrator.Application.Departments;
+using Orchestrator.Application.Roles;
 
 namespace Orchestrator.Api.Controllers;
 
@@ -82,7 +82,7 @@ public sealed class DepartmentsController(DepartmentService departments) : Contr
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
     [EndpointSummary("Assign roles to a department")]
-    [EndpointDescription("Replaces the department's roles with the given role names; its users inherit them. 400 when a role does not exist or is disabled.")]
+    [EndpointDescription("Replaces the department's roles with the given role names; its users inherit them. 400 when a role does not exist or is disabled; 403 when the old or new roles are at or above your own rank (an admin cannot touch the Admin or Super Admin departments or hand out admin roles).")]
     [ProducesResponseType<IReadOnlyList<RoleResponse>>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]

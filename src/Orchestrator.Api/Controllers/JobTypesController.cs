@@ -1,8 +1,8 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Orchestrator.Api.Access;
-using Orchestrator.Api.Catalogs;
-using Orchestrator.Api.JobTypes;
+using Orchestrator.Application.Catalogs;
+using Orchestrator.Application.JobTypes;
 
 namespace Orchestrator.Api.Controllers;
 

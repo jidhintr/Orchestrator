@@ -1,8 +1,8 @@
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { api, type Department, type Role, type User } from './api'
-import { Avatar, Chips, CheckList, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, toggled, useList, useRunner, useToast } from './ui'
+import { Avatar, Chips, ChipPicker, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, toggled, locked, useList, useRunner, useToast, Form, sameSet, Submit } from './ui'
 
-type Panel = { mode: 'create' } | { mode: 'detail'; id: number } | null
+type Panel = { mode: 'create' } | { mode: 'detail'; id: number; edit?: boolean } | null
 type Lookups = { departments: Department[]; roles: Role[] }
 
 const fullName = (u: User) => `${u.firstName} ${u.lastName}`
@@ -21,10 +21,11 @@ export function Users() {
   const lookups = useLookups()
   const [panel, setPanel] = useState<Panel>(null)
   const [query, setQuery] = useState('')
-  const [status, setStatus] = useState('active')
+  const [status, setStatus] = useState('all')
   const [department, setDepartment] = useState('all')
   const [role, setRole] = useState('all')
   const [toast, notify] = useToast()
+  const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = useCallback(() => setPanel(null), [])
   const saved = (text: string) => {
@@ -38,14 +39,14 @@ export function Users() {
     (department === 'all' || u.departments.some((d) => String(d.id) === department)) &&
     (role === 'all' || effectiveRoles(u).includes(role)) &&
     matches(query, fullName(u), u.email, u.mobile))
-  const dirty = query !== '' || status !== 'active' || department !== 'all' || role !== 'all'
+  const dirty = query !== '' || status !== 'all' || department !== 'all' || role !== 'all'
 
   return (
     <Page title="Users" subtitle="People, their departments and roles."
       action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New user</button>}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name, email or mobile"
-        onClear={() => { setQuery(''); setStatus('active'); setDepartment('all'); setRole('all') }}>
+        onClear={() => { setQuery(''); setStatus('all'); setDepartment('all'); setRole('all') }}>
         <Select label="Status" value={status} onChange={setStatus} options={[['active', 'Active'], ['inactive', 'Inactive'], ['all', 'All']]} />
         <Select label="Department" value={department} onChange={setDepartment} options={[['all', 'All'], ...lookups.departments.map((d): [string, string] => [String(d.id), d.name])]} />
         <Select label="Role" value={role} onChange={setRole} options={[['all', 'All'], ...lookups.roles.map((r): [string, string] => [r.name, r.name])]} />
@@ -54,22 +55,23 @@ export function Users() {
       {visible?.length === 0 && <p className="empty">{items?.length ? 'No users match the filters.' : 'No users yet.'}</p>}
       {visible && visible.length > 0 && (
         <table>
-          <thead><tr><th>User</th><th>Contact</th><th>Departments</th><th>Roles</th><th>Status</th></tr></thead>
+          <thead><tr><th>User</th><th>Contact</th><th>Departments</th><th>Roles</th><th>Status</th><th><span className="sr">Actions</span></th></tr></thead>
           <tbody>
             {visible.map((u) => (
               <tr key={u.id}>
-                <td data-label="User"><span className="who"><Avatar name={fullName(u)} /><button className="link" onClick={() => setPanel({ mode: 'detail', id: u.id })}>{fullName(u)}</button></span></td>
+                <td data-label="User"><span className="who"><Avatar name={fullName(u)} /><button className="link" onClick={() => open({ mode: 'detail', id: u.id })}>{fullName(u)}</button></span></td>
                 <td data-label="Contact"><span className="stack">{u.email && <span>{u.email}</span>}<span className="muted">{u.mobile}</span></span></td>
                 <td data-label="Departments"><Chips items={u.departments.map((d) => d.name)} /></td>
                 <td data-label="Roles"><Chips items={effectiveRoles(u)} /></td>
                 <td data-label="Status"><StatusBadges active={u.isActive} /></td>
+                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${fullName(u)}`} onClick={() => setPanel({ mode: 'detail', id: u.id, edit: true })}><Icon name="edit" />Edit</button></td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New user" onClose={close}><CreateForm lookups={lookups} onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title="User" onClose={close}><Detail id={panel.id} lookups={lookups} onChanged={() => void load()} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit user' : 'User'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} lookups={lookups} onChanged={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )
@@ -104,24 +106,24 @@ function CreateForm({ lookups, onDone, onCancel }: { lookups: Lookups; onDone: (
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const input = contact(e.currentTarget)
-    void run(async () => {
+    return run(async () => {
       await api.createUser({ ...input, departmentIds: depts.size ? [...depts].map(Number) : undefined, roles: roles.size ? [...roles] : undefined })
       onDone('User created.')
     })
   }
 
   return (
-    <form onSubmit={submit}>
+    <Form onSubmit={submit}>
       <ContactFields />
       <fieldset><legend>Departments (none = Unassigned)</legend>
-        <CheckList options={departmentOptions(lookups)} selected={depts} onToggle={(k) => setDepts((s) => toggled(s, k))} />
+        <ChipPicker options={departmentOptions(lookups)} selected={depts} onToggle={(k) => setDepts((s) => toggled(s, k))} />
       </fieldset>
       <fieldset><legend>Extra roles</legend>
-        <CheckList options={roleOptions(lookups)} selected={roles} onToggle={(k) => setRoles((s) => toggled(s, k))} />
+        <ChipPicker options={roleOptions(lookups)} selected={roles} onToggle={(k) => setRoles((s) => toggled(s, k))} />
       </fieldset>
       {feedback}
-      <div className="actions"><button type="submit">Create</button><button type="button" className="secondary" onClick={onCancel}>Cancel</button></div>
-    </form>
+      <div className="actions"><Submit>Create</Submit><button type="button" className="secondary" onClick={onCancel}>Cancel</button></div>
+    </Form>
   )
 }
 
@@ -129,7 +131,7 @@ function Detail({ id, lookups, onChanged, onClose }: { id: number; lookups: Look
   const [user, setUser] = useState<User | null>(null)
   const [depts, setDepts] = useState<Set<string>>(new Set())
   const [roles, setRoles] = useState<Set<string>>(new Set())
-  const { run, feedback, error, setError } = useRunner()
+  const { run, feedback, error, setError, busy } = useRunner()
 
   const apply = (u: User) => {
     setUser(u)
@@ -162,19 +164,19 @@ function Detail({ id, lookups, onChanged, onClose }: { id: number; lookups: Look
   return (
     <>
       <p className="meta"><Avatar name={fullName(user)} /><strong>{fullName(user)}</strong><StatusBadges active={user.isActive} /></p>
-      <form onSubmit={save} key={JSON.stringify([user.firstName, user.lastName, user.email, user.mobile, user.isActive])}>
+      <Form onSubmit={save} requireChange key={JSON.stringify([user.firstName, user.lastName, user.email, user.mobile, user.isActive])}>
         <ContactFields user={user} />
-        <label className="check"><input type="checkbox" aria-label="Active" name="isActive" defaultChecked={user.isActive} /><span>Active</span></label>
-        <div className="actions"><button type="submit">Save details</button></div>
-      </form>
+        <label className="switch"><input type="checkbox" role="switch" name="isActive" defaultChecked={user.isActive} /><span>Active</span></label>
+        <div className="actions"><Submit>Save details</Submit></div>
+      </Form>
       <fieldset><legend>Departments</legend>
-        <CheckList options={departmentOptions(lookups)} selected={depts} onToggle={(k) => setDepts((s) => toggled(s, k))} />
-        <div className="actions"><button onClick={saveDepartments}>Save departments</button></div>
+        <ChipPicker options={departmentOptions(lookups)} selected={depts} onToggle={(k) => setDepts((s) => toggled(s, k))} />
+        <div className="actions"><button disabled={busy || sameSet(depts, new Set(user.departments.map((d) => String(d.id))))} onClick={saveDepartments}>Save departments</button></div>
       </fieldset>
       <fieldset><legend>Roles from departments</legend><Chips items={user.departmentRoles} empty="None" /></fieldset>
       <fieldset><legend>Extra roles</legend>
-        <CheckList options={roleOptions(lookups)} selected={roles} onToggle={(k) => setRoles((s) => toggled(s, k))} />
-        <div className="actions"><button onClick={saveRoles}>Save roles</button></div>
+        <ChipPicker options={roleOptions(lookups)} selected={roles} onToggle={(k) => setRoles((s) => toggled(s, k))} />
+        <div className="actions"><button disabled={busy || sameSet(roles, new Set(user.roles))} onClick={saveRoles}>Save roles</button></div>
       </fieldset>
       {feedback}
       <div className="actions"><button className="secondary" onClick={onClose}>Close</button></div>
