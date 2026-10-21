@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Orchestrator.Api.Errors;
+using Orchestrator.Api.Roles;
 using Orchestrator.Infrastructure.Persistence;
 
 namespace Orchestrator.Api.Departments;
 
-public sealed class DepartmentService(OrchestratorDbContext db)
+public sealed class DepartmentService(OrchestratorDbContext db, RoleService roles)
 {
     public async Task<IReadOnlyList<DepartmentResponse>> ListAsync(CancellationToken cancellationToken) =>
         [.. (await db.Departments.AsNoTracking().OrderBy(d => d.Name).ToListAsync(cancellationToken)).Select(DepartmentResponse.From)];
@@ -47,6 +48,23 @@ public sealed class DepartmentService(OrchestratorDbContext db)
         department.IsActive = false;
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task<IReadOnlyList<RoleResponse>> RolesAsync(int id, CancellationToken cancellationToken) =>
+        [.. (await FindWithRolesAsync(id, cancellationToken)).Roles.OrderBy(r => r.Name).Select(RoleResponse.From)];
+
+    public async Task<IReadOnlyList<RoleResponse>> AssignRolesAsync(int id, AssignRolesRequest request, CancellationToken cancellationToken)
+    {
+        var department = await FindWithRolesAsync(id, cancellationToken);
+        var found = await roles.FindActiveAsync(request.Roles, cancellationToken);
+        department.Roles.Clear();
+        department.Roles.AddRange(found);
+        await db.SaveChangesAsync(cancellationToken);
+        return await RolesAsync(id, cancellationToken);
+    }
+
+    private async Task<Department> FindWithRolesAsync(int id, CancellationToken cancellationToken) =>
+        await db.Departments.Include(d => d.Roles).SingleOrDefaultAsync(d => d.Id == id, cancellationToken)
+        ?? throw new NotFoundException($"Department '{id}' was not found.");
 
     private async Task<Department> FindAsync(int id, CancellationToken cancellationToken) =>
         await db.Departments.FindAsync([id], cancellationToken) ?? throw new NotFoundException($"Department '{id}' was not found.");

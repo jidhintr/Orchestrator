@@ -1,0 +1,92 @@
+### Roles API v1. Anonymous for now (authentication is undecided).
+### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### List all roles
+GET {{baseUrl}}/api/v1/roles
+Accept: application/json
+
+### Create a role
+# @name create
+POST {{baseUrl}}/api/v1/roles
+Content-Type: application/json
+
+{
+  "name": "Estimator",
+  "description": "Prepares order estimates"
+}
+
+### Get the role created above
+GET {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}
+Accept: application/json
+
+### Update the role
+PUT {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "name": "Estimator",
+  "description": "Prepares and revises order estimates"
+}
+
+### List the users that have the Admin role (id 2)
+GET {{baseUrl}}/api/v1/roles/2/users
+Accept: application/json
+
+### Assign roles to a user (replaces the user's roles; user 2 = seeded admin)
+PUT {{baseUrl}}/api/v1/users/2/roles
+Content-Type: application/json
+
+{
+  "roles": ["Admin", "Estimator"]
+}
+
+### Disable the role
+POST {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}/disable
+
+### Enable the role
+POST {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}/enable
+
+### Failure: roles still assigned cannot be deleted
+DELETE {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}
+
+### Unassign, then delete the role
+PUT {{baseUrl}}/api/v1/users/2/roles
+Content-Type: application/json
+
+{
+  "roles": ["Admin"]
+}
+
+###
+DELETE {{baseUrl}}/api/v1/roles/{{create.response.body.$.id}}
+
+### Failure: invalid body
+POST {{baseUrl}}/api/v1/roles
+Content-Type: application/json
+
+{
+  "name": "x"
+}
+
+### Failure: duplicate name
+POST {{baseUrl}}/api/v1/roles
+Content-Type: application/json
+
+{
+  "name": "admin",
+  "description": "Duplicate"
+}
+
+### Failure: system role cannot be deleted
+DELETE {{baseUrl}}/api/v1/roles/2
+
+### Failure: assign an unknown role
+PUT {{baseUrl}}/api/v1/users/2/roles
+Content-Type: application/json
+
+{
+  "roles": ["Wizard"]
+}
+
+### Failure: unknown role
+GET {{baseUrl}}/api/v1/roles/999999

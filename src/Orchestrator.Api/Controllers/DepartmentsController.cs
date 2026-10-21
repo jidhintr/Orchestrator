@@ -1,6 +1,7 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Orchestrator.Api.Departments;
+using Orchestrator.Api.Roles;
 
 namespace Orchestrator.Api.Controllers;
 
@@ -57,4 +58,21 @@ public sealed class DepartmentsController(DepartmentService departments) : Contr
         await departments.DeactivateAsync(id, cancellationToken);
         return NoContent();
     }
+
+    [HttpGet("{id:int}/roles")]
+    [EndpointSummary("List a department's roles")]
+    [EndpointDescription("Roles every user of the department inherits, ordered by name.")]
+    [ProducesResponseType<IReadOnlyList<RoleResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IReadOnlyList<RoleResponse>> Roles(int id, CancellationToken cancellationToken) =>
+        await departments.RolesAsync(id, cancellationToken);
+
+    [HttpPut("{id:int}/roles")]
+    [EndpointSummary("Assign roles to a department")]
+    [EndpointDescription("Replaces the department's roles with the given role names; its users inherit them. 400 when a role does not exist or is disabled.")]
+    [ProducesResponseType<IReadOnlyList<RoleResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IReadOnlyList<RoleResponse>> AssignRoles(int id, AssignRolesRequest request, CancellationToken cancellationToken) =>
+        await departments.AssignRolesAsync(id, request, cancellationToken);
 }

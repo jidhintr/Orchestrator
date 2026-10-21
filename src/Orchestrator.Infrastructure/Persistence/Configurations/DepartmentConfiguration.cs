@@ -25,6 +25,12 @@ internal sealed class DepartmentConfiguration : IEntityTypeConfiguration<Departm
             Seed(4, "QA", "QA"),
             Seed(5, "Delivery", "DELIVERY"),
             Seed(6, "Clients", "CLIENTS"));
+
+        builder.HasMany(d => d.Roles).WithMany(r => r.Departments).UsingEntity(j =>
+        {
+            j.ToTable("department_roles");
+            j.HasData(new { DepartmentsId = 1, RolesId = 1 }, new { DepartmentsId = 2, RolesId = 2 });
+        });
     }
 
     private static object Seed(int id, string name, string code) =>

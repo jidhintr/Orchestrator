@@ -13,9 +13,12 @@ public sealed partial class GlobalExceptionHandler(IProblemDetailsService proble
         var (status, title, detail) = exception switch
         {
             NotFoundException e => (StatusCodes.Status404NotFound, "Resource not found.", e.Message),
+            BadRequestException e => (StatusCodes.Status400BadRequest, "Bad request.", e.Message),
             ConflictException e => (StatusCodes.Status409Conflict, "Conflict.", e.Message),
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } } =>
                 (StatusCodes.Status409Conflict, "Conflict.", "A record with the same unique value already exists."),
+            DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.ForeignKeyViolation } } =>
+                (StatusCodes.Status400BadRequest, "Bad request.", "A referenced record does not exist."),
             _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.", (string?)null),
         };
 

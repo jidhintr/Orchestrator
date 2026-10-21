@@ -9,4 +9,6 @@ public sealed class Department : BaseEntity
     public string? Description { get; set; }
 
     public bool IsSystem { get; init; }
+
+    public List<Role> Roles { get; } = [];
 }

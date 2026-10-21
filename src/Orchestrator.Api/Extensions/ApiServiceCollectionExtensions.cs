@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.OpenApi;
 using Orchestrator.Api.Departments;
 using Orchestrator.Api.Errors;
 using Orchestrator.Api.Middleware;
+using Orchestrator.Api.Roles;
+using Orchestrator.Api.Users;
 
 namespace Orchestrator.Api.Extensions;
 
@@ -12,6 +14,8 @@ public static class ApiServiceCollectionExtensions
     {
         services.AddControllers();
         services.AddScoped<DepartmentService>();
+        services.AddScoped<UserService>();
+        services.AddScoped<RoleService>();
 
         services.AddProblemDetails(options => options.CustomizeProblemDetails = context =>
         {

@@ -32,6 +32,25 @@ Content-Type: application/json
 ### Deactivate the department (soft delete)
 POST {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}/deactivate
 
+### List the roles of department 2 (Admin)
+GET {{baseUrl}}/api/v1/departments/2/roles
+
+### Assign roles to a department (replaces; its users inherit them)
+PUT {{baseUrl}}/api/v1/departments/2/roles
+Content-Type: application/json
+
+{
+  "roles": ["Admin"]
+}
+
+### Failure: department with an unknown role
+PUT {{baseUrl}}/api/v1/departments/2/roles
+Content-Type: application/json
+
+{
+  "roles": ["Wizard"]
+}
+
 ### Failure: invalid body
 POST {{baseUrl}}/api/v1/departments
 Content-Type: application/json

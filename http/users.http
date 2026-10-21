@@ -1,0 +1,93 @@
+### Users API v1. Anonymous for now (authentication is undecided).
+### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### List all users
+GET {{baseUrl}}/api/v1/users
+Accept: application/json
+
+### Create a user (department 4 = QA)
+# @name create
+POST {{baseUrl}}/api/v1/users
+Content-Type: application/json
+
+{
+  "firstName": "Asha",
+  "lastName": "Rao",
+  "email": "asha.rao@example.com",
+  "mobile": "9876543210",
+  "departmentId": 4,
+  "roles": ["Employee"]
+}
+
+### Get the user created above
+GET {{baseUrl}}/api/v1/users/{{create.response.body.$.id}}
+Accept: application/json
+
+### Update (full replace; isActive false deactivates)
+PUT {{baseUrl}}/api/v1/users/{{create.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "firstName": "Asha",
+  "lastName": "Rao",
+  "email": "asha.rao@example.com",
+  "mobile": "9876543210",
+  "departmentId": 4,
+  "roles": ["Manager"],
+  "isActive": false
+}
+
+### Failure: invalid body
+POST {{baseUrl}}/api/v1/users
+Content-Type: application/json
+
+{
+  "firstName": "A",
+  "lastName": "",
+  "email": "not-an-email",
+  "mobile": "abc",
+  "departmentId": 4,
+  "roles": []
+}
+
+### Failure: unknown role
+POST {{baseUrl}}/api/v1/users
+Content-Type: application/json
+
+{
+  "firstName": "Bad",
+  "lastName": "Role",
+  "email": "bad.role@example.com",
+  "mobile": "9876543210",
+  "departmentId": 4,
+  "roles": ["Wizard"]
+}
+
+### Failure: unknown department
+POST {{baseUrl}}/api/v1/users
+Content-Type: application/json
+
+{
+  "firstName": "No",
+  "lastName": "Dept",
+  "email": "no.dept@example.com",
+  "mobile": "9876543210",
+  "departmentId": 999999,
+  "roles": ["Employee"]
+}
+
+### Failure: duplicate email (seeded admin)
+POST {{baseUrl}}/api/v1/users
+Content-Type: application/json
+
+{
+  "firstName": "Dup",
+  "lastName": "User",
+  "email": "ADMIN@orchestrator.local",
+  "mobile": "9876543210",
+  "departmentId": 2,
+  "roles": ["Admin"]
+}
+
+### Failure: unknown user
+GET {{baseUrl}}/api/v1/users/999999

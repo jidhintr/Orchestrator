@@ -10,6 +10,10 @@ public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext
 
     public DbSet<Department> Departments => Set<Department>();
 
+    public DbSet<User> Users => Set<User>();
+
+    public DbSet<Role> Roles => Set<Role>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);

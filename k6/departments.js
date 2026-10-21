@@ -30,6 +30,7 @@ export default function () {
   check(http.put(`${API}/${id}`, JSON.stringify({ name: `K6 renamed ${suffix}`, description: 'k6' }), json), {
     'update: 200': (r) => r.status === 200,
   });
+  check(http.get(`${API}/2/roles`), { 'department roles: 200': (r) => r.status === 200 });
   check(http.post(`${API}/${id}/deactivate`), { 'deactivate: 204': (r) => r.status === 204 });
   check(http.get(`${API}/999999`), { 'unknown id: 404': (r) => r.status === 404 });
 
