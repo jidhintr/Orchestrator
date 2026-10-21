@@ -1,0 +1,9 @@
+### Health (UC-000 platform health)
+# Expect 200 {"status":"Healthy","checks":[{"name":"postgres","status":"Healthy"}]}
+# Expect 503 when Postgres is unreachable.
+GET {{baseUrl}}/api/health
+Accept: application/json
+
+###
+# OpenAPI document (Development only)
+GET {{baseUrl}}/openapi/v1.json
