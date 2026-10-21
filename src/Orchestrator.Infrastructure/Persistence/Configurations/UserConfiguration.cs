@@ -23,11 +23,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             Seed(1, "Super", "Admin", "superadmin@orchestrator.local", 1),
             Seed(2, "Admin", "User", "admin@orchestrator.local", 2));
 
-        builder.HasMany(u => u.Roles).WithMany(r => r.Users).UsingEntity(j =>
-        {
-            j.ToTable("user_roles");
-            j.HasData(new { UsersId = 1, RolesId = 1 }, new { UsersId = 2, RolesId = 2 });
-        });
+        builder.HasMany(u => u.Roles).WithMany(r => r.Users).UsingEntity(j => j.ToTable("user_roles"));
     }
 
     private static object Seed(int id, string firstName, string lastName, string email, int departmentId) =>

@@ -360,18 +360,6 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.HasIndex("UsersId");
 
                     b.ToTable("user_roles", "biz");
-
-                    b.HasData(
-                        new
-                        {
-                            RolesId = 1,
-                            UsersId = 1
-                        },
-                        new
-                        {
-                            RolesId = 2,
-                            UsersId = 2
-                        });
                 });
 
             modelBuilder.Entity("DepartmentRole", b =>
