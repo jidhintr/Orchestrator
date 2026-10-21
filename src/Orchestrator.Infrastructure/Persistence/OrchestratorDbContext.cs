@@ -22,6 +22,12 @@ public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext
 
     public DbSet<Order> Orders => Set<Order>();
 
+    public DbSet<Client> Clients => Set<Client>();
+
+    public DbSet<ApprovalChain> ApprovalChains => Set<ApprovalChain>();
+
+    public DbSet<ApprovalChainStage> ApprovalChainStages => Set<ApprovalChainStage>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);

@@ -1,0 +1,67 @@
+### Job types API v1. Reads are anonymous; changes need an admin or super admin in the temporary X-Acting-User-Id header (1 = Super Admin).
+### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+### Seeded ids: 1 Cutting, 2 Laminating, 3 Quality Assurance, 4 Delivery.
+
+### List all job types
+GET {{baseUrl}}/api/v1/job-types
+Accept: application/json
+
+### Create a job type (cost, commission and profit overrides are optional)
+# @name create
+POST {{baseUrl}}/api/v1/job-types
+Content-Type: application/json
+X-Acting-User-Id: 1
+
+{
+  "name": "Binding",
+  "description": "Binds printed sheets",
+  "laborCost": 3.5,
+  "commissionPercent": 2,
+  "profitPercent": 15
+}
+
+### Get the job type created above
+GET {{baseUrl}}/api/v1/job-types/{{create.response.body.$.id}}
+Accept: application/json
+
+### Which catalogs use job type 1?
+GET {{baseUrl}}/api/v1/job-types/1/catalogs
+Accept: application/json
+
+### Update the job type
+PUT {{baseUrl}}/api/v1/job-types/{{create.response.body.$.id}}
+Content-Type: application/json
+X-Acting-User-Id: 1
+
+{
+  "name": "Binding and Stitching",
+  "laborCost": 4
+}
+
+### Deactivate it (cannot be added to catalogs afterwards)
+POST {{baseUrl}}/api/v1/job-types/{{create.response.body.$.id}}/deactivate
+X-Acting-User-Id: 1
+
+### Duplicate name returns 409
+POST {{baseUrl}}/api/v1/job-types
+Content-Type: application/json
+X-Acting-User-Id: 1
+
+{ "name": "cutting" }
+
+### Invalid input returns 400
+POST {{baseUrl}}/api/v1/job-types
+Content-Type: application/json
+X-Acting-User-Id: 1
+
+{ "name": "X", "profitPercent": 150 }
+
+### Without an acting user changes return 401
+POST {{baseUrl}}/api/v1/job-types
+Content-Type: application/json
+
+{ "name": "Ghost" }
+
+### Unknown id returns 404
+GET {{baseUrl}}/api/v1/job-types/999999
+Accept: application/json

@@ -52,7 +52,7 @@ public sealed partial class ApiContext
             text.Replace("{unique}", Unique, StringComparison.Ordinal).Replace("{id}", LastId ?? "<no id captured>", StringComparison.Ordinal),
             m => Aliases.TryGetValue(m.Groups[1].Value + ":" + m.Groups[2].Value, out var id) ? id : SeedIds.GetValueOrDefault(m.Groups[1].Value + ":" + m.Groups[2].Value, m.Value));
 
-    [GeneratedRegex(@"{(dept|role|user):([^{}]+)}")]
+    [GeneratedRegex(@"{(dept|role|user|catalog):([^{}]+)}")]
     private static partial Regex Placeholder();
 
     public Task SendAsync(string method, string path, string? body = null) => SendAsync(method, path, body, ActingUserId);

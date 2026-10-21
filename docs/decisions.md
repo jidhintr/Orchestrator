@@ -54,4 +54,5 @@ Add a short section for each significant choice (context, decision, alternatives
 ## ADR-0004: UI is React + Vite PWA (2026-10-21, owner)
 - **Decision:** React + TypeScript on Vite in `ui/`, installable as a PWA for phones; Capacitor can wrap it later. SignalR client for phase-3 notifications.
 - **Dev wiring:** Vite proxies `/api` to the API, so the API has no CORS configuration. The UI hardcodes `X-Acting-User-Id: 1` until auth lands.
+- **Filtering:** client-side over the full list (no pagination in the API); move to query parameters when pagination lands.
 - **Rejected:** Angular (more ceremony for a CRUD back office), Flutter/React Native (second toolchain).

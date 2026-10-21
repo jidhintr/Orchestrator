@@ -43,7 +43,24 @@ Never a false 200. Body is plain text. Anonymous. Feature: `Health.feature` (als
 
 **UC-004 Manage catalogs** (`Catalog.feature`): list, view, create, update (replaces the ordered job type sequence), clone and
 soft-deactivate catalogs. A catalog referenced by any order cannot be edited or deactivated (409; clone it instead); cloning is
-always allowed. Job types are seeded placeholders (no endpoints yet); Order is a stub (catalogId only). Reporting is deferred.
+always allowed. Job types are seeded placeholders (read-only list only, UC-007); Order is a stub (catalogId only). Reporting is deferred.
+
+**UC-005 Manage clients** (`Client.feature`): list, view, create, update and set the account status (Active, PaymentPending,
+Suspended, Inactive) of external clients; tier (Normal, Gold, Platinum) sets the stored discount (placeholder 0/5/10, pending
+owner values). Email is unique. Deferred until orders exist: blocking orders for Suspended clients, speedups, CSV export,
+print documents, client-only views.
+
+**UC-006 Approval chains** (`ApprovalChain.feature`): an ordered list of approving departments. A default chain always exists (seeded
+with no stages, editable, not deletable); a catalog may have one own chain, otherwise it follows the default. Admin or super admin
+change chains; reads are open. Departments must exist, be active and appear once. Deferred until orders exist: the approval flow
+itself (the department manager approves, then the assembly line picks the order up), and chains referenced by orders.
+
+**UC-007 Job types** (`JobType.feature`): read-only list of the seeded placeholder job types, so catalog forms can pick and order steps. Create/edit stays deferred until the owner confirms the real job types.
+
+
+**UC-007 Manage job types** (`JobType.feature`): list, view, create, update, soft-deactivate job types (assembly-line steps) with optional
+labor cost, commission % and profit % overrides (null = use the catalog values), and list the catalogs using one. Name is unique.
+Admin or super admin change them; reads are open. Deferred: job type status, assignment and the completion notification (need orders).
 
 **UC-001 Manage departments** (implemented; `Department.feature`): list, view, create, rename/describe and soft-deactivate
 departments; six system departments are seeded and protected from rename/deactivation. Failures: invalid input -> 400
