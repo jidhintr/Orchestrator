@@ -17,6 +17,14 @@ internal static class ApiHost
         (brokenDatabase ? _brokenDbFactory : _factory ?? throw new InvalidOperationException("ApiHost has not been started."))!
         .CreateClient();
 
+    public static async Task AddOrderAsync(int catalogId)
+    {
+        using var scope = _factory!.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<OrchestratorDbContext>();
+        db.Orders.Add(new Order { CatalogId = catalogId });
+        await db.SaveChangesAsync();
+    }
+
     public static async Task StartAsync()
     {
         _postgres = new PostgreSqlBuilder("postgres:17-alpine").Build();

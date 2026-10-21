@@ -83,6 +83,115 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Catalog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<decimal>("BasePrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("CatalogDiscountPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<decimal>("CommissionPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateTime>("InsertedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("InsertedById")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("LaborCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LastUpdatedById")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<decimal>("ProfitPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<string>("Sku")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .UseCollation("case_insensitive");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Sku")
+                        .IsUnique();
+
+                    b.ToTable("catalogs", "biz");
+                });
+
+            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.CatalogJobStep", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<int>("CatalogId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("InsertedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("InsertedById")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("JobTypeId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LastUpdatedById")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Sequence")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogId");
+
+                    b.HasIndex("JobTypeId");
+
+                    b.ToTable("catalog_job_steps", "biz");
+                });
+
             modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Department", b =>
                 {
                     b.Property<int>("Id")
@@ -206,6 +315,128 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                             LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             Name = "Unassigned"
                         });
+                });
+
+            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.JobType", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<decimal?>("CommissionPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("InsertedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("InsertedById")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal?>("LaborCost")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LastUpdatedById")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .UseCollation("case_insensitive");
+
+                    b.Property<decimal?>("ProfitPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("job_types", "biz");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "Cutting"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "Laminating"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "Quality Assurance"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            IsActive = true,
+                            LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
+                            Name = "Delivery"
+                        });
+                });
+
+            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Order", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<int>("CatalogId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("InsertedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("InsertedById")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LastUpdatedById")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogId");
+
+                    b.ToTable("orders", "biz");
                 });
 
             modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Role", b =>
@@ -427,6 +658,34 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.CatalogJobStep", b =>
+                {
+                    b.HasOne("Orchestrator.Infrastructure.Persistence.Catalog", null)
+                        .WithMany("CatalogJobSteps")
+                        .HasForeignKey("CatalogId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Orchestrator.Infrastructure.Persistence.JobType", "JobType")
+                        .WithMany()
+                        .HasForeignKey("JobTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("JobType");
+                });
+
+            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Order", b =>
+                {
+                    b.HasOne("Orchestrator.Infrastructure.Persistence.Catalog", "Catalog")
+                        .WithMany()
+                        .HasForeignKey("CatalogId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Catalog");
+                });
+
             modelBuilder.Entity("RoleUser", b =>
                 {
                     b.HasOne("Orchestrator.Infrastructure.Persistence.Role", null)
@@ -440,6 +699,11 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         .HasForeignKey("UsersId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Orchestrator.Infrastructure.Persistence.Catalog", b =>
+                {
+                    b.Navigation("CatalogJobSteps");
                 });
 #pragma warning restore 612, 618
         }

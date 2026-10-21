@@ -14,6 +14,14 @@ public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext
 
     public DbSet<Role> Roles => Set<Role>();
 
+    public DbSet<JobType> JobTypes => Set<JobType>();
+
+    public DbSet<Catalog> Catalogs => Set<Catalog>();
+
+    public DbSet<CatalogJobStep> CatalogJobSteps => Set<CatalogJobStep>();
+
+    public DbSet<Order> Orders => Set<Order>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);

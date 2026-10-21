@@ -41,6 +41,10 @@ Never a false 200. Body is plain text. Anonymous. Feature: `Health.feature` (als
 
 **UC-002 Users and who may change whom** (implemented; `UserAccess.feature`) and **UC-003 Roles and department roles** (implemented; `Role.feature`): see the rules above and ADR-0003.
 
+**UC-004 Manage catalogs** (`Catalog.feature`): list, view, create, update (replaces the ordered job type sequence), clone and
+soft-deactivate catalogs. A catalog referenced by any order cannot be edited or deactivated (409; clone it instead); cloning is
+always allowed. Job types are seeded placeholders (no endpoints yet); Order is a stub (catalogId only). Reporting is deferred.
+
 **UC-001 Manage departments** (implemented; `Department.feature`): list, view, create, rename/describe and soft-deactivate
 departments; six system departments are seeded and protected from rename/deactivation. Failures: invalid input -> 400
 (nothing saved), duplicate name/code -> 409, unknown id -> 404, unexpected error -> standard 500 without internals.

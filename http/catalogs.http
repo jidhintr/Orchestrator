@@ -1,0 +1,56 @@
+### Catalogs API v1. Anonymous for now (authentication is undecided).
+### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+### Seeded job type ids: 1 Cutting, 2 Laminating, 3 Quality Assurance, 4 Delivery.
+
+### List all catalogs
+GET {{baseUrl}}/api/v1/catalogs
+Accept: application/json
+
+### Create a catalog
+# @name create
+POST {{baseUrl}}/api/v1/catalogs
+Content-Type: application/json
+
+{
+  "sku": "BAGS-PRINTED",
+  "name": "Printed Bags",
+  "description": "Printed paper bags",
+  "basePrice": 10.5,
+  "catalogDiscountPercent": 0,
+  "laborCost": 2,
+  "commissionPercent": 5,
+  "profitPercent": 20,
+  "jobTypeIds": [1, 2, 3, 4]
+}
+
+### Get the catalog created above
+GET {{baseUrl}}/api/v1/catalogs/{{create.response.body.$.id}}
+Accept: application/json
+
+### Clone it (allowed even when the source has orders)
+# @name clone
+POST {{baseUrl}}/api/v1/catalogs/{{create.response.body.$.id}}/clone
+Content-Type: application/json
+
+{
+  "sku": "BAGS-PREMIUM",
+  "name": "Premium Bags"
+}
+
+### Reorder / add / remove job types on the clone (409 if the catalog has orders)
+PUT {{baseUrl}}/api/v1/catalogs/{{clone.response.body.$.id}}
+Content-Type: application/json
+
+{
+  "sku": "BAGS-PREMIUM",
+  "name": "Premium Bags",
+  "basePrice": 15,
+  "catalogDiscountPercent": 0,
+  "laborCost": 3,
+  "commissionPercent": 5,
+  "profitPercent": 25,
+  "jobTypeIds": [1, 3, 2, 4]
+}
+
+### Deactivate the clone (409 if the catalog has orders)
+POST {{baseUrl}}/api/v1/catalogs/{{clone.response.body.$.id}}/deactivate
