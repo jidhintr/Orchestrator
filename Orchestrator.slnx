@@ -6,6 +6,8 @@
     <Project Path="src/Orchestrator.Infrastructure/Orchestrator.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Orchestrator.IntegrationTests/Orchestrator.IntegrationTests.csproj" />
     <Project Path="tests/Orchestrator.Specs/Orchestrator.Specs.csproj" />
+    <Project Path="tests/Orchestrator.UnitTests/Orchestrator.UnitTests.csproj" />
   </Folder>
 </Solution>

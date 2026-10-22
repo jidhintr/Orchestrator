@@ -36,6 +36,8 @@ CI (`.github/workflows/ci.yml`): format, build, tests, EF drift check, vulnerabl
 | `src/Orchestrator.Infrastructure` | `DbContext`, EF configuration, seed, migrations, Postgres wiring |
 | `src/Orchestrator.Api` | Controllers, middleware, error handling, versioning, OpenAPI/Scalar |
 | `tests/Orchestrator.Specs` | Gherkin `Features/`, `StepDefinitions/`, `Support/ApiHost` (API + Postgres container) |
+| `tests/Orchestrator.UnitTests` | Domain, services (EF InMemory), DTO validation, error handler, middleware |
+| `tests/Orchestrator.IntegrationTests` | Every endpoint over HTTP against a Testcontainers Postgres |
 | `http/`, `k6/` | Request files and load scripts, kept in sync with endpoints |
 
 ## Troubleshooting

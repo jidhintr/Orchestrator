@@ -29,9 +29,9 @@ Data model: every entity inherits `BaseEntity` (int identity PK from 1000, audit
 Controller + `[EndpointSummary]` + `[ProducesResponseType]` for every status (feeds Scalar) -> `http/<resource>.http` -> `k6/<resource>.js` ->
 Gherkin scenarios tagged `@UC-xxx`. Incomplete if any is missing. Use `/feature-checklist` for a full feature.
 
-## Testing (owner decision: BDD only for now)
+## Testing (BDD specs, plus unit and integration projects the owner requested)
 Reqnroll + Gherkin on xUnit v3 in `tests/Orchestrator.Specs`; API hosted in-process against a Testcontainers Postgres
-with real migrations. No unit/integration/e2e projects until the owner asks. Generic steps in `ApiSteps.cs`;
+with real migrations. `tests/Orchestrator.UnitTests` (EF InMemory: no unique indexes, FKs or case-insensitive collation) and `tests/Orchestrator.IntegrationTests` (real Postgres) cover the same code; no e2e project until the owner asks. Generic steps in `ApiSteps.cs`;
 placeholders `{unique}` and `{id}`. Scenarios come from the owner or documented use cases, never invented.
 Cover failure paths. Never weaken, skip or delete a scenario to get green.
 
