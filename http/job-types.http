@@ -56,6 +56,10 @@ Content-Type: application/json
 POST {{baseUrl}}/api/v1/job-types/{{create.response.body.$.id}}/deactivate
 Authorization: Bearer {{login.response.body.$.accessToken}}
 
+### Activate it again
+POST {{baseUrl}}/api/v1/job-types/{{create.response.body.$.id}}/activate
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
 ### Duplicate name returns 409
 POST {{baseUrl}}/api/v1/job-types
 Authorization: Bearer {{login.response.body.$.accessToken}}

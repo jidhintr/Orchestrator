@@ -72,6 +72,16 @@ public class JobTypeServiceTests
     }
 
     [Fact]
+    public async Task Activate_restores_a_deactivated_job_type_and_unknown_is_not_found()
+    {
+        var created = await _jobTypes.CreateAsync(new JobTypeRequest { Name = "Cut" }, default);
+        await _jobTypes.DeactivateAsync(created.Id, default);
+        await _jobTypes.ActivateAsync(created.Id, default);
+        Assert.True((await _jobTypes.GetAsync(created.Id, default)).IsActive);
+        await Assert.ThrowsAsync<NotFoundException>(() => _jobTypes.ActivateAsync(9999, default));
+    }
+
+    [Fact]
     public async Task Catalogs_lists_only_catalogs_using_the_job_type()
     {
         var cut = _db.AddJobType("Cut");

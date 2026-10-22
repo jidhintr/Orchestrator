@@ -20,7 +20,7 @@ public sealed class ApprovalChainService(IAppDbContext db)
             throw new NotFoundException($"Catalog '{catalogId}' was not found.");
         }
 
-        var chain = await WithStages().AsNoTracking().SingleOrDefaultAsync(c => c.CatalogId == catalogId, cancellationToken)
+        var chain = await WithStages().AsNoTracking().SingleOrDefaultAsync(c => c.CatalogId == catalogId && c.IsActive, cancellationToken)
             ?? await WithStages().AsNoTracking().SingleAsync(c => c.IsDefault, cancellationToken);
         return ApprovalChainResponse.From(chain);
     }
@@ -61,6 +61,25 @@ public sealed class ApprovalChainService(IAppDbContext db)
         }
 
         db.ApprovalChains.Remove(chain);
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task DeactivateAsync(int id, CancellationToken cancellationToken)
+    {
+        var chain = await FindAsync(id, cancellationToken);
+        if (chain.IsDefault)
+        {
+            throw new ConflictException("The default approval chain cannot be deactivated.");
+        }
+
+        chain.IsActive = false;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task ActivateAsync(int id, CancellationToken cancellationToken)
+    {
+        var chain = await FindAsync(id, cancellationToken);
+        chain.IsActive = true;
         await db.SaveChangesAsync(cancellationToken);
     }
 

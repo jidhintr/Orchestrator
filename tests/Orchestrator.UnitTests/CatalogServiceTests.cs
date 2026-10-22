@@ -109,6 +109,16 @@ public class CatalogServiceTests
     }
 
     [Fact]
+    public async Task Activate_restores_a_deactivated_catalog_and_unknown_is_not_found()
+    {
+        var created = await _catalogs.CreateAsync(Request(), default);
+        await _catalogs.DeactivateAsync(created.Id, default);
+        await _catalogs.ActivateAsync(created.Id, default);
+        Assert.True((await _catalogs.GetAsync(created.Id, default)).IsActive);
+        await Assert.ThrowsAsync<NotFoundException>(() => _catalogs.ActivateAsync(9999, default));
+    }
+
+    [Fact]
     public async Task Deactivate_catalog_with_orders_is_conflict()
     {
         var created = await _catalogs.CreateAsync(Request(), default);

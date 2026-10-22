@@ -51,6 +51,18 @@ Content-Type: application/json
   "departmentIds": [3, 4, 2]
 }
 
+### Deactivate the catalog chain (the catalog follows the default meanwhile; 409 for the default chain)
+POST {{baseUrl}}/api/v1/approval-chains/{{create.response.body.$.id}}/deactivate
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Activate it again
+POST {{baseUrl}}/api/v1/approval-chains/{{create.response.body.$.id}}/activate
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### The default chain cannot be deactivated (409)
+POST {{baseUrl}}/api/v1/approval-chains/1/deactivate
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
 ### Delete the catalog chain (the catalog goes back to the default)
 DELETE {{baseUrl}}/api/v1/approval-chains/{{create.response.body.$.id}}
 Authorization: Bearer {{login.response.body.$.accessToken}}

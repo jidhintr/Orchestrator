@@ -69,6 +69,16 @@ public class DepartmentServiceTests
     }
 
     [Fact]
+    public async Task Activate_restores_a_deactivated_department_and_unknown_is_not_found()
+    {
+        var created = await As().CreateAsync(new CreateDepartmentRequest { Name = "Cutting", Code = "CUT" }, default);
+        await As().DeactivateAsync(created.Id, default);
+        await As().ActivateAsync(created.Id, default);
+        Assert.True((await As().GetAsync(created.Id, default)).IsActive);
+        await Assert.ThrowsAsync<NotFoundException>(() => As().ActivateAsync(9999, default));
+    }
+
+    [Fact]
     public async Task Deactivate_system_department_is_conflict() =>
         await Assert.ThrowsAsync<ConflictException>(() => As().DeactivateAsync(4, default));
 

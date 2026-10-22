@@ -1,5 +1,6 @@
 import { useAccess } from './access'
 import { type FormEvent, useEffect, useState } from 'react'
+import { type Col, useGrid } from './grid'
 import { api, type Client, type ClientInput, type ClientStatus, type ClientTier } from './api'
 import { Badge, Filters, Icon, matches, message, Modal, Page, Select, locked, useList, useRunner, useToast, Form, Submit } from './ui'
 
@@ -29,34 +30,44 @@ export function Clients() {
     void load()
   }
 
-  const visible = items?.filter((c) =>
+  const all: Col<Client>[] = [
+    { key: 'company', label: 'Company', kind: 'text', locked: true, value: (c) => c.companyName, cell: (c) => <button className="link" onClick={() => open({ mode: 'detail', id: c.id })}>{c.companyName}</button> },
+    { key: 'contactName', label: 'Contact', kind: 'text', value: (c) => c.contactName, cell: (c) => <span className="stack"><span>{c.contactName}</span><span className="muted">{c.email}</span></span> },
+    { key: 'email', label: 'Email', kind: 'text', value: (c) => c.email, cell: (c) => c.email },
+    { key: 'phone', label: 'Phone', kind: 'text', value: (c) => c.phone, cell: (c) => c.phone },
+    { key: 'address', label: 'Address', kind: 'text', value: (c) => c.shippingAddress, cell: (c) => <span className="muted">{c.shippingAddress}</span> },
+    { key: 'tier', label: 'Tier', kind: 'text', value: (c) => c.tier, cell: (c) => <Badge kind={c.tier === 'Normal' ? 'muted' : 'info'}>{c.tier}</Badge> },
+    { key: 'discount', label: 'Discount', kind: 'number', value: (c) => c.tierDiscountPercent, cell: (c) => `${c.tierDiscountPercent}%` },
+    { key: 'status', label: 'Status', kind: 'text', value: (c) => label(c.status), cell: (c) => <StatusBadge status={c.status} /> },
+  ]
+  const grid = useGrid('grid:clients', all, ['email','phone'])
+
+  const visible = items && grid.filter(items).filter((c) =>
     (status === 'all' || c.status === status) &&
     (tier === 'all' || c.tier === tier) &&
     matches(query, c.companyName, c.contactName, c.email, c.phone))
-  const dirty = query !== '' || status !== 'all' || tier !== 'all'
+  const dirty = query !== '' || status !== 'all' || tier !== 'all' || grid.active
 
   return (
     <Page title="Clients" subtitle="Companies that place orders."
       action={canEdit ? <button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New client</button> : null}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search company, contact, email or phone"
-        onClear={() => { setQuery(''); setStatus('all'); setTier('all') }}>
+        onClear={() => { grid.clear(); setQuery(''); setStatus('all'); setTier('all') }}>
         <Select label="Status" value={status} onChange={setStatus} options={[['all', 'All'], ...statuses.map((s): [string, string] => [s, label(s)])]} />
         <Select label="Tier" value={tier} onChange={setTier} options={[['all', 'All'], ...tiers.map((t): [string, string] => [t, t])]} />
+        {grid.tools}
       </Filters>
+      {grid.panel}
       {items === null && !error && <p className="muted">Loading...</p>}
       {visible?.length === 0 && <p className="empty">{items?.length ? 'No clients match the filters.' : 'No clients yet.'}</p>}
       {visible && visible.length > 0 && (
         <table>
-          <thead><tr><th>Company</th><th>Contact</th><th>Tier</th><th>Discount</th><th>Status</th><th><span className="sr">Actions</span></th></tr></thead>
+          <thead><tr>{grid.head}<th><span className="sr">Actions</span></th></tr></thead>
           <tbody>
             {visible.map((c) => (
               <tr key={c.id}>
-                <td data-label="Company"><button className="link" onClick={() => open({ mode: 'detail', id: c.id })}>{c.companyName}</button></td>
-                <td data-label="Contact"><span className="stack"><span>{c.contactName}</span><span className="muted">{c.email}</span></span></td>
-                <td data-label="Tier"><Badge kind={c.tier === 'Normal' ? 'muted' : 'info'}>{c.tier}</Badge></td>
-                <td data-label="Discount">{c.tierDiscountPercent}%</td>
-                <td data-label="Status"><StatusBadge status={c.status} /></td>
+                {grid.cells(c)}
                 <td data-label="" className="row-actions">{canEdit && <button className="secondary small" aria-label={`Edit ${c.companyName}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
@@ -114,26 +125,22 @@ function CreateForm({ onDone, onCancel }: { onDone: (text: string) => void; onCa
 
 function Detail({ id, onChanged, onClose }: { id: number; onChanged: () => void; onClose: () => void }) {
   const [client, setClient] = useState<Client | null>(null)
-  const [status, setStatus] = useState<ClientStatus>('Active')
-  const { run, feedback, error, setError, busy } = useRunner()
-
-  const apply = (c: Client) => {
-    setClient(c)
-    setStatus(c.status)
-    onChanged()
-  }
+  const { run, feedback, error, setError } = useRunner()
 
   useEffect(() => {
-    api.client(id).then((c) => {
-      setClient(c)
-      setStatus(c.status)
-    }).catch((e) => setError(message(e)))
+    api.client(id).then(setClient).catch((e) => setError(message(e)))
   }, [id, setError])
 
   const save = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const input = read(e.currentTarget)
-    return run(async () => apply(await api.updateClient(id, input)), 'Saved.')
+    const status = String(new FormData(e.currentTarget).get('status')) as ClientStatus
+    return run(async () => {
+      let next = await api.updateClient(id, input)
+      if (status !== next.status) next = await api.setClientStatus(id, status)
+      setClient(next)
+      onChanged()
+    }, 'Saved.')
   }
 
   if (!client) return error ? feedback : <p className="muted">Loading...</p>
@@ -141,17 +148,12 @@ function Detail({ id, onChanged, onClose }: { id: number; onChanged: () => void;
   return (
     <>
       <p className="meta"><strong>{client.companyName}</strong><StatusBadge status={client.status} /><Badge kind="muted">Discount {client.tierDiscountPercent}%</Badge></p>
-      <Form onSubmit={save} requireChange key={JSON.stringify(client)}>
+      <Form onSubmit={save} requireChange className="ro-h" key={JSON.stringify(client)}>
         <Fields client={client} />
-        <div className="actions"><Submit>Save details</Submit></div>
+        <label>Account status<select name="status" defaultValue={client.status}>{statuses.map((s) => <option key={s} value={s}>{label(s)}</option>)}</select></label>
+        {feedback}
+        <div className="actions"><Submit>Save</Submit><button type="button" className="secondary" onClick={onClose}>Close</button></div>
       </Form>
-      <fieldset>
-        <legend>Account status</legend>
-        <label>Status<select aria-label="Status" value={status} onChange={(e) => setStatus(e.target.value as ClientStatus)}>{statuses.map((s) => <option key={s} value={s}>{label(s)}</option>)}</select></label>
-        <div className="actions"><button disabled={busy || status === client.status} onClick={() => run(async () => apply(await api.setClientStatus(id, status)), 'Status saved.')}>Save status</button></div>
-      </fieldset>
-      {feedback}
-      <div className="actions"><button className="secondary" onClick={onClose}>Close</button></div>
     </>
   )
 }

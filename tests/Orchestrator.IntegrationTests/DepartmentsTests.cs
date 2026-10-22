@@ -121,6 +121,16 @@ public class DepartmentsTests(ApiFixture api)
     }
 
     [Fact]
+    public async Task Activate_restores_the_record_and_unknown_is_404()
+    {
+        var id = await api.NewDepartment();
+        await api.Post($"departments/{id}/deactivate");
+        Assert.Equal(HttpStatusCode.NoContent, (await api.Post($"departments/{id}/activate")).Status);
+        Assert.True((await api.Get($"departments/{id}"))["isActive"].GetBoolean());
+        ProblemAssert.Is(await api.Post($"departments/{ApiFixture.UnknownId}/activate"), HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Deactivate_a_system_department_is_409() =>
         ProblemAssert.Is(await api.Post("departments/4/deactivate"), HttpStatusCode.Conflict);
 

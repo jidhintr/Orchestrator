@@ -98,6 +98,27 @@ public class ApprovalChainsTests(ApiFixture api)
         ProblemAssert.Is(await api.Get($"approval-chains/for-catalog/{ApiFixture.UnknownId}"), HttpStatusCode.NotFound);
 
     [Fact]
+    public async Task Deactivate_and_activate_toggle_the_chain_and_need_an_admin()
+    {
+        var catalog = await api.NewCatalog();
+        var chain = await api.Post("approval-chains", Body(catalog));
+        Assert.Equal(HttpStatusCode.Forbidden, (await api.Post($"approval-chains/{chain.Id}/deactivate", actor: await api.NewEmployee())).Status);
+        Assert.Equal(HttpStatusCode.NoContent, (await api.Post($"approval-chains/{chain.Id}/deactivate")).Status);
+        Assert.False((await api.Get($"approval-chains/{chain.Id}"))["isActive"].GetBoolean());
+        Assert.True((await api.Get($"approval-chains/for-catalog/{catalog}"))["isDefault"].GetBoolean());
+        Assert.Equal(HttpStatusCode.NoContent, (await api.Post($"approval-chains/{chain.Id}/activate")).Status);
+        Assert.True((await api.Get($"approval-chains/{chain.Id}"))["isActive"].GetBoolean());
+    }
+
+    [Fact]
+    public async Task Deactivate_default_is_409_and_unknown_is_404()
+    {
+        ProblemAssert.Is(await api.Post("approval-chains/1/deactivate"), HttpStatusCode.Conflict);
+        ProblemAssert.Is(await api.Post($"approval-chains/{ApiFixture.UnknownId}/deactivate"), HttpStatusCode.NotFound);
+        ProblemAssert.Is(await api.Post($"approval-chains/{ApiFixture.UnknownId}/activate"), HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Update_replaces_name_description_and_stages()
     {
         var chain = await api.Post("approval-chains", Body(await api.NewCatalog()));

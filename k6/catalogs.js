@@ -40,6 +40,8 @@ export default function (token) {
     'update: 200': (r) => r.status === 200,
   });
   check(api.post(`${API}/${cloneId}/deactivate`), { 'deactivate: 204': (r) => r.status === 204 });
+  check(api.post(`${API}/${cloneId}/activate`), { 'activate: 204': (r) => r.status === 204 });
+  check(api.post(`${API}/${cloneId}/deactivate`), { 'deactivate again: 204': (r) => r.status === 204 });
   check(api.get(`${API}/999999`), { 'unknown id: 404': (r) => r.status === 404 });
 
   sleep(1);

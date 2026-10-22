@@ -116,6 +116,14 @@ Feature: Department management
     When I send a GET request to "/api/v1/departments/{id}"
     Then the response JSON "name" is "Quality Check"
 
+  Scenario: Activate a deactivated department
+    Given a department "Folding {unique}" with code "FLD{unique}" exists
+    When I send a POST request to "/api/v1/departments/{id}/deactivate"
+    And I send a POST request to "/api/v1/departments/{id}/activate"
+    Then the response status is 204
+    When I send a GET request to "/api/v1/departments/{id}"
+    Then the response JSON "isActive" is "true"
+
   Scenario: System departments cannot be deactivated
     Given I have the id of the department with code "ADMINISTRATIVES"
     When I send a POST request to "/api/v1/departments/{id}/deactivate"

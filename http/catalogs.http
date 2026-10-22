@@ -71,3 +71,7 @@ Content-Type: application/json
 ### Deactivate the clone (409 if the catalog has orders)
 POST {{baseUrl}}/api/v1/catalogs/{{clone.response.body.$.id}}/deactivate
 Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Activate the clone again
+POST {{baseUrl}}/api/v1/catalogs/{{clone.response.body.$.id}}/activate
+Authorization: Bearer {{login.response.body.$.accessToken}}

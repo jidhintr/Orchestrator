@@ -52,6 +52,19 @@ Feature: Approval chains
     When I send a GET request to "/api/v1/approval-chains/for-catalog/{catalog:current}"
     Then the response JSON "isDefault" is "true"
 
+  Scenario: The default chain cannot be deactivated
+    When I send a POST request to "/api/v1/approval-chains/1/deactivate"
+    Then the response is a problem with status 409
+
+  Scenario: A catalog chain can be deactivated and activated again
+    Given a catalog with SKU "ACT{unique}" exists
+    And an approval chain for the catalog with the departments "ACCOUNTING" exists
+    When I send a GET request to "/api/v1/approval-chains/for-catalog/{catalog:current}"
+    And I send a POST request to "/api/v1/approval-chains/{id}/deactivate"
+    Then the response status is 204
+    When I send a POST request to "/api/v1/approval-chains/{id}/activate"
+    Then the response status is 204
+
   Scenario: The default chain cannot be deleted
     When I send a DELETE request to "/api/v1/approval-chains/1"
     Then the response is a problem with status 409

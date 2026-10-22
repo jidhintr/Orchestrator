@@ -47,6 +47,10 @@ Content-Type: application/json
 POST {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}/deactivate
 Authorization: Bearer {{login.response.body.$.accessToken}}
 
+### Activate the department again
+POST {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}/activate
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
 ### List the roles of department 2 (Admin)
 GET {{baseUrl}}/api/v1/departments/2/roles
 Authorization: Bearer {{login.response.body.$.accessToken}}

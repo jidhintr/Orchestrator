@@ -75,4 +75,18 @@ public sealed class JobTypesController(JobTypeService jobTypes) : ControllerBase
         await jobTypes.DeactivateAsync(id, cancellationToken);
         return NoContent();
     }
+
+    [HttpPost("{id:int}/activate")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [EndpointSummary("Activate a job type")]
+    [EndpointDescription("Undoes a deactivation: sets isActive back to true so it can be added to catalogs again.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<NoContentResult> Activate(int id, CancellationToken cancellationToken)
+    {
+        await jobTypes.ActivateAsync(id, cancellationToken);
+        return NoContent();
+    }
 }

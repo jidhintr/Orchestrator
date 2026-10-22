@@ -69,6 +69,20 @@ public sealed class DepartmentsController(DepartmentService departments) : Contr
         return NoContent();
     }
 
+    [HttpPost("{id:int}/activate")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [EndpointSummary("Activate a department")]
+    [EndpointDescription("Undoes a deactivation: sets isActive back to true.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<NoContentResult> Activate(int id, CancellationToken cancellationToken)
+    {
+        await departments.ActivateAsync(id, cancellationToken);
+        return NoContent();
+    }
+
     [HttpGet("{id:int}/roles")]
     [EndpointSummary("List a department's roles")]
     [EndpointDescription("Roles every user of the department inherits, ordered by name.")]

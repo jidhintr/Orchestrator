@@ -43,6 +43,9 @@ export default function (token) {
   check(api.get(`${API}/for-catalog/${catalogId}`), { 'for catalog: own': (r) => r.json('isDefault') === false });
   check(api.put(`${API}/${id}`, JSON.stringify({ name: `K6 ${suffix}`.slice(0, 80), departmentIds: [4, 3] }), json), { 'update: 200': (r) => r.status === 200 });
   check(api.post(API, JSON.stringify({ name: `K6 dup ${suffix}`.slice(0, 80), catalogId, departmentIds: [3] }), json), { 'second chain: 409': (r) => r.status === 409 });
+  check(api.post(`${API}/${id}/deactivate`, null, json), { 'deactivate: 204': (r) => r.status === 204 });
+  check(api.post(`${API}/${id}/activate`, null, json), { 'activate: 204': (r) => r.status === 204 });
+  check(api.post(`${API}/1/deactivate`, null, json), { 'default deactivate: 409': (r) => r.status === 409 });
   check(api.del(`${API}/1`, null, json), { 'default delete: 409': (r) => r.status === 409 });
   check(api.del(`${API}/${id}`, null, json), { 'delete: 204': (r) => r.status === 204 });
   check(api.get(`${API}/999999`), { 'unknown id: 404': (r) => r.status === 404 });

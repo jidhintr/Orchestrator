@@ -1,7 +1,8 @@
 import { useAccess } from './access'
 import { type FormEvent, useEffect, useState } from 'react'
+import { type Col, useGrid } from './grid'
 import { api, type ApprovalChain, type Catalog, type Department } from './api'
-import { Badge, Timeline, Filters, Icon, matches, message, Modal, OrderedPicker, Page, Select, locked, useList, useRunner, useToast, Form, Submit } from './ui'
+import { Badge, Timeline, Filters, Icon, matches, message, Modal, OrderedPicker, Page, Select, StatusBadges, locked, useList, useRunner, useToast, Form, Submit } from './ui'
 
 type Panel = { mode: 'create' } | { mode: 'detail'; id: number; edit?: boolean } | null
 type Lookups = { catalogs: Catalog[]; departments: Department[] }
@@ -34,32 +35,41 @@ export function Chains() {
     void load()
   }
 
-  const visible = items?.filter((c) =>
+  const all: Col<ApprovalChain>[] = [
+    { key: 'name', label: 'Chain', kind: 'text', locked: true, value: (c) => c.name, cell: (c) => <button className="link" onClick={() => open({ mode: 'detail', id: c.id })}>{c.name}</button> },
+    { key: 'description', label: 'Description', kind: 'text', value: (c) => c.description ?? '', cell: (c) => <span className="muted">{c.description}</span> },
+    { key: 'appliesTo', label: 'Applies to', kind: 'text', value: (c) => (c.isDefault ? 'Default' : catalogName(lookups, c.catalogId)), cell: (c) => (c.isDefault ? <Badge>Default</Badge> : catalogName(lookups, c.catalogId)) },
+    { key: 'status', label: 'Status', kind: 'text', value: (c) => (c.isActive ? 'Active' : 'Inactive'), cell: (c) => <StatusBadges active={c.isActive} /> },
+    { key: 'stages', label: 'Stages', kind: 'text', value: (c) => c.stages.map((s) => s.departmentName).join(', '), cell: (c) => <Timeline items={c.stages.map((s) => s.departmentName)} empty="No stages" /> },
+  ]
+  const grid = useGrid('grid:chains', all, ['description'])
+
+  const visible = items && grid.filter(items).filter((c) =>
     (scope === 'all' || (scope === 'default') === c.isDefault) &&
     (department === 'all' || c.stages.some((s) => String(s.departmentId) === department)) &&
     matches(query, c.name, c.description, c.isDefault ? 'default' : catalogName(lookups, c.catalogId)))
-  const dirty = query !== '' || scope !== 'all' || department !== 'all'
+  const dirty = query !== '' || scope !== 'all' || department !== 'all' || grid.active
 
   return (
     <Page title="Approval chains" subtitle="Which departments approve an order, in order."
       action={canEdit ? <button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New chain</button> : null}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name, description or catalog"
-        onClear={() => { setQuery(''); setScope('all'); setDepartment('all') }}>
+        onClear={() => { grid.clear(); setQuery(''); setScope('all'); setDepartment('all') }}>
         <Select label="Scope" value={scope} onChange={setScope} options={[['all', 'All'], ['default', 'Default'], ['catalog', 'Catalog']]} />
         <Select label="Department" value={department} onChange={setDepartment} options={[['all', 'All'], ...lookups.departments.map((d): [string, string] => [String(d.id), d.name])]} />
+        {grid.tools}
       </Filters>
+      {grid.panel}
       {items === null && !error && <p className="muted">Loading...</p>}
       {visible?.length === 0 && <p className="empty">{items?.length ? 'No chains match the filters.' : 'No chains yet.'}</p>}
       {visible && visible.length > 0 && (
         <table>
-          <thead><tr><th>Chain</th><th>Applies to</th><th>Stages</th><th><span className="sr">Actions</span></th></tr></thead>
+          <thead><tr>{grid.head}<th><span className="sr">Actions</span></th></tr></thead>
           <tbody>
             {visible.map((c) => (
               <tr key={c.id}>
-                <td data-label="Chain"><button className="link" onClick={() => open({ mode: 'detail', id: c.id })}>{c.name}</button></td>
-                <td data-label="Applies to">{c.isDefault ? <Badge>Default</Badge> : catalogName(lookups, c.catalogId)}</td>
-                <td data-label="Stages"><Timeline items={c.stages.map((s) => s.departmentName)} empty="No stages" /></td>
+                {grid.cells(c)}
                 <td data-label="" className="row-actions">{canEdit && <button className="secondary small" aria-label={`Edit ${c.name}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
@@ -79,7 +89,7 @@ function ChainFields({ chain }: { chain?: ApprovalChain }) {
   return (
     <>
       <label>Name<input name="name" required minLength={2} maxLength={80} defaultValue={chain?.name} autoFocus /></label>
-      <label>Description<textarea name="description" maxLength={250} defaultValue={chain?.description ?? ''} /></label>
+      <label>Description<input name="description" maxLength={250} defaultValue={chain?.description ?? ''} /></label>
     </>
   )
 }
@@ -136,8 +146,13 @@ function Detail({ id, lookups, onChanged, onSaved, onClose }: { onSaved: () => v
   const save = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const input = read(e.currentTarget)
+    const active = chain?.isDefault ? true : new FormData(e.currentTarget).get('isActive') === 'on'
     return run(async () => {
-      const updated = await api.updateChain(id, { ...input, departmentIds: stages })
+      let updated = await api.updateChain(id, { ...input, departmentIds: stages })
+      if (active !== updated.isActive) {
+        await (active ? api.activateChain(id) : api.deactivateChain(id))
+        updated = { ...updated, isActive: active }
+      }
       setChain(updated)
       setStages(updated.stages.map((s) => s.departmentId))
       onSaved()
@@ -162,19 +177,20 @@ function Detail({ id, lookups, onChanged, onSaved, onClose }: { onSaved: () => v
 
   return (
     <>
-      <p className="meta">{chain.isDefault ? <Badge>Default chain</Badge> : <Badge kind="muted">{catalogName(lookups, chain.catalogId)}</Badge>}</p>
-      <Form onSubmit={save} requireChange changed={JSON.stringify(stages) !== JSON.stringify(chain.stages.map((s) => s.departmentId))} key={JSON.stringify(chain)}>
+      <p className="meta"><StatusBadges active={chain.isActive} />{chain.isDefault ? <Badge>Default chain</Badge> : <Badge kind="muted">{catalogName(lookups, chain.catalogId)}</Badge>}</p>
+      <Form onSubmit={save} requireChange className="ro-h" changed={JSON.stringify(stages) !== JSON.stringify(chain.stages.map((s) => s.departmentId))} key={JSON.stringify(chain)}>
         <ChainFields chain={chain} />
+        <label className="switch"><input type="checkbox" role="switch" name="isActive" defaultChecked={chain.isActive} disabled={chain.isDefault} /><span>Active</span></label>
         <fieldset><legend>Approving departments in order</legend>
           <OrderedPicker label="Add a department" options={options} value={stages} onChange={setStages} empty="Add at least one department." />
         </fieldset>
-        <div className="actions"><Submit disabled={stages.length === 0}>Save chain</Submit></div>
+        {feedback}
+        <div className="actions">
+          <Submit disabled={stages.length === 0}>Save</Submit>
+          <button type="button" className="danger" disabled={chain.isDefault} onClick={remove}>Delete</button>
+          <button type="button" className="secondary" onClick={onClose}>Close</button>
+        </div>
       </Form>
-      {feedback}
-      <div className="actions">
-        <button className="danger" disabled={chain.isDefault} onClick={remove}>Delete</button>
-        <button className="secondary" onClick={onClose}>Close</button>
-      </div>
     </>
   )
 }

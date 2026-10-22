@@ -1,5 +1,6 @@
 import { useAccess } from './access'
 import { type FormEvent, useEffect, useState } from 'react'
+import { type Col, useGrid } from './grid'
 import { api, type Catalog, type JobType, type JobTypeInput } from './api'
 import { Chips, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, locked, useList, useRunner, useToast, Form, Submit } from './ui'
 
@@ -23,30 +24,38 @@ export function JobTypes() {
     void load()
   }
 
-  const visible = items?.filter((j) => (status === 'all' || (status === 'active') === j.isActive) && matches(query, j.name, j.description))
-  const dirty = query !== '' || status !== 'all'
+  const all: Col<JobType>[] = [
+    { key: 'name', label: 'Name', kind: 'text', locked: true, value: (j) => j.name, cell: (j) => <button className="link" onClick={() => open({ mode: 'detail', id: j.id })}>{j.name}</button> },
+    { key: 'description', label: 'Description', kind: 'text', value: (j) => j.description ?? '', cell: (j) => <span className="muted">{j.description}</span> },
+    { key: 'laborCost', label: 'Labor cost', kind: 'number', value: (j) => j.laborCost ?? NaN, cell: (j) => j.laborCost ?? '-' },
+    { key: 'commission', label: 'Commission', kind: 'number', value: (j) => j.commissionPercent ?? NaN, cell: (j) => percent(j.commissionPercent) },
+    { key: 'profit', label: 'Profit', kind: 'number', value: (j) => j.profitPercent ?? NaN, cell: (j) => percent(j.profitPercent) },
+    { key: 'status', label: 'Status', kind: 'text', value: (j) => (j.isActive ? 'Active' : 'Inactive'), cell: (j) => <StatusBadges active={j.isActive} /> },
+  ]
+  const grid = useGrid('grid:jobtypes', all)
+
+  const visible = items && grid.filter(items).filter((j) => (status === 'all' || (status === 'active') === j.isActive) && matches(query, j.name, j.description))
+  const dirty = query !== '' || status !== 'all' || grid.active
 
   return (
     <Page title="Job types" subtitle="The steps a catalog item goes through, and what each costs."
       action={canEdit ? <button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New job type</button> : null}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name or description"
-        onClear={() => { setQuery(''); setStatus('all') }}>
+        onClear={() => { grid.clear(); setQuery(''); setStatus('all') }}>
         <Select label="Status" value={status} onChange={setStatus} options={[['active', 'Active'], ['inactive', 'Inactive'], ['all', 'All']]} />
+        {grid.tools}
       </Filters>
+      {grid.panel}
       {items === null && !error && <p className="muted">Loading...</p>}
       {visible?.length === 0 && <p className="empty">{items?.length ? 'No job types match the filters.' : 'No job types yet.'}</p>}
       {visible && visible.length > 0 && (
         <table>
-          <thead><tr><th>Name</th><th>Labor cost</th><th>Commission</th><th>Profit</th><th>Status</th><th><span className="sr">Actions</span></th></tr></thead>
+          <thead><tr>{grid.head}<th><span className="sr">Actions</span></th></tr></thead>
           <tbody>
             {visible.map((j) => (
               <tr key={j.id}>
-                <td data-label="Name"><span className="stack"><button className="link" onClick={() => open({ mode: 'detail', id: j.id })}>{j.name}</button>{j.description && <span className="muted">{j.description}</span>}</span></td>
-                <td data-label="Labor cost">{j.laborCost ?? '-'}</td>
-                <td data-label="Commission">{percent(j.commissionPercent)}</td>
-                <td data-label="Profit">{percent(j.profitPercent)}</td>
-                <td data-label="Status"><StatusBadges active={j.isActive} /></td>
+                {grid.cells(j)}
                 <td data-label="" className="row-actions">{canEdit && <button className="secondary small" aria-label={`Edit ${j.name}`} onClick={() => setPanel({ mode: 'detail', id: j.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
@@ -54,7 +63,7 @@ export function JobTypes() {
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New job type" onClose={close}><CreateForm onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit job type' : 'Job type'} readOnly={!panel.edit} onEdit={canEdit ? () => setPanel({ ...panel, edit: true }) : undefined} changeKey={panel.id} onClose={close}><Detail id={panel.id} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit job type' : 'Job type'} readOnly={!panel.edit} onEdit={canEdit ? () => setPanel({ ...panel, edit: true }) : undefined} changeKey={panel.id} onClose={close}><Detail id={panel.id} onSaved={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )
@@ -77,7 +86,7 @@ function Fields({ job }: { job?: JobType }) {
   return (
     <>
       <label>Name<input name="name" required minLength={2} maxLength={100} defaultValue={job?.name} autoFocus /></label>
-      <label>Description<textarea name="description" maxLength={500} defaultValue={job?.description ?? ''} /></label>
+      <label>Description<input name="description" maxLength={500} defaultValue={job?.description ?? ''} /></label>
       <div className="row three">
         <label>Labor cost<input name="laborCost" type="number" min={0} max={1000000000} step="0.01" defaultValue={job?.laborCost ?? ''} /></label>
         <label>Commission %<input name="commissionPercent" type="number" min={0} max={100} step="0.01" defaultValue={job?.commissionPercent ?? ''} /></label>
@@ -106,7 +115,7 @@ function CreateForm({ onDone, onCancel }: { onDone: (text: string) => void; onCa
   )
 }
 
-function Detail({ id, onChanged, onSaved, onClose }: { onSaved: () => void; id: number; onChanged: (text: string) => void; onClose: () => void }) {
+function Detail({ id, onSaved, onClose }: { onSaved: () => void; id: number; onClose: () => void }) {
   const [job, setJob] = useState<JobType | null>(null)
   const [catalogs, setCatalogs] = useState<Catalog[]>([])
   const { run, feedback, error, setError } = useRunner()
@@ -121,16 +130,13 @@ function Detail({ id, onChanged, onSaved, onClose }: { onSaved: () => void; id: 
   const save = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const input = read(e.currentTarget)
-    return run(async () => { setJob(await api.updateJobType(id, input)); onSaved() }, 'Saved.')
-  }
-
-  const deactivate = () => {
-    if (job && window.confirm(`Deactivate ${job.name}?`)) {
-      return run(async () => {
-        await api.deactivateJobType(id)
-        onChanged('Job type deactivated.')
-      })
-    }
+    const active = new FormData(e.currentTarget).get('isActive') === 'on'
+    return run(async () => {
+      const updated = await api.updateJobType(id, input)
+      if (active !== updated.isActive) await (active ? api.activateJobType(id) : api.deactivateJobType(id))
+      setJob({ ...updated, isActive: active })
+      onSaved()
+    }, 'Saved.')
   }
 
   if (!job) return error ? feedback : <p className="muted">Loading...</p>
@@ -138,16 +144,16 @@ function Detail({ id, onChanged, onSaved, onClose }: { onSaved: () => void; id: 
   return (
     <>
       <p className="meta"><StatusBadges active={job.isActive} /></p>
-      <Form onSubmit={save} requireChange key={JSON.stringify(job)}>
+      <Form onSubmit={save} requireChange className="ro-h" key={JSON.stringify(job)}>
         <Fields job={job} />
-        <div className="actions"><Submit>Save details</Submit></div>
+        <label className="switch"><input type="checkbox" role="switch" name="isActive" defaultChecked={job.isActive} /><span>Active</span></label>
+        <fieldset><legend>Used in catalogs</legend><Chips items={catalogs.map((c) => c.name)} empty="No catalog uses this job type." /></fieldset>
+        {feedback}
+        <div className="actions">
+          <Submit>Save</Submit>
+          <button type="button" className="secondary" onClick={onClose}>Close</button>
+        </div>
       </Form>
-      <fieldset><legend>Used in catalogs</legend><Chips items={catalogs.map((c) => c.name)} empty="No catalog uses this job type." /></fieldset>
-      {feedback}
-      <div className="actions">
-        <button className="danger" disabled={!job.isActive} onClick={deactivate}>Deactivate</button>
-        <button className="secondary" onClick={onClose}>Close</button>
-      </div>
     </>
   )
 }

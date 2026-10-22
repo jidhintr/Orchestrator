@@ -38,6 +38,8 @@ export default function (token) {
   });
   check(api.get(`${API}/2/roles`), { 'department roles: 200': (r) => r.status === 200 });
   check(api.post(`${API}/${id}/deactivate`, null, json), { 'deactivate: 204': (r) => r.status === 204 });
+  check(api.post(`${API}/${id}/activate`, null, json), { 'activate: 204': (r) => r.status === 204 });
+  check(api.post(`${API}/${id}/deactivate`, null, json), { 'deactivate again: 204': (r) => r.status === 204 });
   check(api.get(`${API}/999999`), { 'unknown id: 404': (r) => r.status === 404 });
 
   sleep(1);

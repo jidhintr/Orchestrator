@@ -74,4 +74,33 @@ public sealed class ApprovalChainsController(ApprovalChainService chains) : Cont
         await chains.DeleteAsync(id, cancellationToken);
         return NoContent();
     }
+
+    [HttpPost("{id:int}/deactivate")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [EndpointSummary("Deactivate an approval chain")]
+    [EndpointDescription("The catalog follows the default chain while its own chain is inactive. 409 for the default chain.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<NoContentResult> Deactivate(int id, CancellationToken cancellationToken)
+    {
+        await chains.DeactivateAsync(id, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpPost("{id:int}/activate")]
+    [AdminOnly]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [EndpointSummary("Activate an approval chain")]
+    [EndpointDescription("Undoes a deactivation: the catalog follows its own chain again.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<NoContentResult> Activate(int id, CancellationToken cancellationToken)
+    {
+        await chains.ActivateAsync(id, cancellationToken);
+        return NoContent();
+    }
 }

@@ -112,6 +112,17 @@ public class JobTypesTests(ApiFixture api)
     }
 
     [Fact]
+    public async Task Activate_restores_the_record_and_needs_an_admin()
+    {
+        var id = await api.NewJobType();
+        await api.Post($"job-types/{id}/deactivate");
+        Assert.Equal(HttpStatusCode.Forbidden, (await api.Post($"job-types/{id}/activate", actor: await api.NewEmployee())).Status);
+        Assert.Equal(HttpStatusCode.NoContent, (await api.Post($"job-types/{id}/activate")).Status);
+        Assert.True((await api.Get($"job-types/{id}"))["isActive"].GetBoolean());
+        ProblemAssert.Is(await api.Post($"job-types/{ApiFixture.UnknownId}/activate"), HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Deactivate_unknown_is_404_and_needs_an_admin()
     {
         ProblemAssert.Is(await api.Post($"job-types/{ApiFixture.UnknownId}/deactivate"), HttpStatusCode.NotFound);

@@ -175,7 +175,7 @@ export function Avatar({ name, large }: { name: string; large?: boolean }) {
   return <span className={large ? "avatar xl" : "avatar"} style={{ background: `hsl(${[...name].reduce((h, c) => h + c.charCodeAt(0), 0) % 360} 55% 42%)` }}>{initials}</span>
 }
 
-export function ChipPicker({ options, selected, onToggle, addLabel = 'Add', empty = 'None selected' }: { options: { key: string; label: string; hint?: string }[]; selected: Set<string>; onToggle: (key: string) => void; addLabel?: string; empty?: string }) {
+export function ChipPicker({ options, selected, onToggle, addLabel = 'Add', empty = 'None selected', showChosen = true }: { options: { key: string; label: string; hint?: string }[]; selected: Set<string>; onToggle: (key: string) => void; addLabel?: string; empty?: string; showChosen?: boolean }) {
   const [open, setOpen] = useState(false)
   const [filter, setFilter] = useState('')
   const box = useRef<HTMLSpanElement>(null)
@@ -206,8 +206,8 @@ export function ChipPicker({ options, selected, onToggle, addLabel = 'Add', empt
   return (
     <div className="picker-chips">
       {options.length === 0 && <p className="muted">Nothing to choose from.</p>}
-      {options.length > 0 && chosen.length === 0 && <span className="muted">{empty}</span>}
-      {chosen.map((o) => (
+      {showChosen && options.length > 0 && chosen.length === 0 && <span className="muted">{empty}</span>}
+      {showChosen && chosen.map((o) => (
         <span key={o.key} className="chip" title={o.hint}>
           {o.label}
           <button type="button" className="chip-x" aria-label={`Remove ${o.label}`} onClick={() => onToggle(o.key)}><Icon name="close" /></button>
@@ -261,7 +261,6 @@ export function Select({ label, value, onChange, options }: { label: string; val
 export const matches = (q: string, ...parts: (string | null | undefined)[]) => !q.trim() || parts.join(' ').toLowerCase().includes(q.trim().toLowerCase())
 
 export function OrderedPicker({ label, options, value, onChange, empty = 'Nothing added yet.' }: { label: string; options: { id: number; label: string }[]; value: number[]; onChange: (ids: number[]) => void; empty?: string }) {
-  const [pick, setPick] = useState('')
   const name = (id: number) => options.find((o) => o.id === id)?.label ?? `#${id}`
   const [drag, setDrag] = useState<{ from: number; over: number } | null>(null)
   const [was, setWas] = useState<Record<number, number>>({})
@@ -295,13 +294,7 @@ export function OrderedPicker({ label, options, value, onChange, empty = 'Nothin
           </li>
         ))}
       </ol>
-      <div className="add">
-        <select aria-label={label} value={pick} onChange={(e) => setPick(e.target.value)}>
-          <option value="">-- Select --</option>
-          {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-        </select>
-        <button type="button" className="secondary" disabled={!pick} onClick={() => { onChange([...value, Number(pick)]); setPick('') }}>Add</button>
-      </div>
+      <div className="add"><ChipPicker showChosen={false} addLabel={label} options={options.map((o) => ({ key: String(o.id), label: o.label }))} selected={new Set()} onToggle={(k) => onChange([...value, Number(k)])} /></div>
     </div>
   )
 }

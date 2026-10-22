@@ -22,6 +22,7 @@ Four projects, dependencies point inward: `Orchestrator.Domain` (entities, `Base
 (`DbContext`, EF config, seed, migrations, DI) ; `Orchestrator.Api` (controllers, middleware, error handler, OpenAPI) composes them.
 Also `tests/Orchestrator.Specs`; `http/`; `k6/`.
 Detailed code rules: `.claude/rules/coding-standards.md` (loads for `src/**/*.cs`).
+UI look and feel rules: `.claude/rules/ui.md` (loads for `ui/**`).
 Keep classes small; no placeholder files, new packages or abstractions without a concrete need.
 Data model: every entity inherits `BaseEntity` (int identity PK from 1000, audit columns, `IsActive`); relate tables by PK/FK only. Details in `.claude/rules/coding-standards.md`.
 

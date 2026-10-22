@@ -58,6 +58,17 @@ public sealed class CatalogsController(CatalogService catalogs) : ControllerBase
         return NoContent();
     }
 
+    [HttpPost("{id:int}/activate")]
+    [EndpointSummary("Activate a catalog")]
+    [EndpointDescription("Undoes a deactivation: sets isActive back to true.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<NoContentResult> Activate(int id, CancellationToken cancellationToken)
+    {
+        await catalogs.ActivateAsync(id, cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("{id:int}/clone")]
     [EndpointSummary("Clone a catalog")]
     [EndpointDescription("Copies fields and job type sequence into a new catalog with the given SKU and name; allowed even when the source has orders. 409 when the SKU is already used.")]

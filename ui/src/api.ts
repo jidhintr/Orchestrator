@@ -79,6 +79,7 @@ export interface ApprovalChain {
   description: string | null
   isDefault: boolean
   catalogId: number | null
+  isActive: boolean
   stages: { sequence: number; departmentId: number; departmentName: string }[]
 }
 
@@ -221,6 +222,7 @@ export const api = {
   create: (input: DepartmentInput & { code: string }) => call<Department>('/departments', 'POST', input),
   update: (id: number, input: DepartmentInput) => call<Department>(`/departments/${id}`, 'PUT', input),
   deactivate: (id: number) => call<void>(`/departments/${id}/deactivate`, 'POST'),
+  activate: (id: number) => call<void>(`/departments/${id}/activate`, 'POST'),
   departmentRoles: (id: number) => call<Role[]>(`/departments/${id}/roles`),
   assignDepartmentRoles: (id: number, roles: string[]) => call<Role[]>(`/departments/${id}/roles`, 'PUT', { roles }),
 
@@ -252,12 +254,14 @@ export const api = {
   createJobType: (input: JobTypeInput) => call<JobType>('/job-types', 'POST', input),
   updateJobType: (id: number, input: JobTypeInput) => call<JobType>(`/job-types/${id}`, 'PUT', input),
   deactivateJobType: (id: number) => call<void>(`/job-types/${id}/deactivate`, 'POST'),
+  activateJobType: (id: number) => call<void>(`/job-types/${id}/activate`, 'POST'),
 
   catalogs: () => call<Catalog[]>('/catalogs'),
   catalog: (id: number) => call<Catalog>(`/catalogs/${id}`),
   createCatalog: (input: CatalogInput) => call<Catalog>('/catalogs', 'POST', input),
   updateCatalog: (id: number, input: CatalogInput) => call<Catalog>(`/catalogs/${id}`, 'PUT', input),
   deactivateCatalog: (id: number) => call<void>(`/catalogs/${id}/deactivate`, 'POST'),
+  activateCatalog: (id: number) => call<void>(`/catalogs/${id}/activate`, 'POST'),
   cloneCatalog: (id: number, sku: string, name: string) => call<Catalog>(`/catalogs/${id}/clone`, 'POST', { sku, name }),
 
   chains: () => call<ApprovalChain[]>('/approval-chains'),
@@ -266,4 +270,6 @@ export const api = {
   createChain: (input: ChainInput & { catalogId: number }) => call<ApprovalChain>('/approval-chains', 'POST', input),
   updateChain: (id: number, input: ChainInput) => call<ApprovalChain>(`/approval-chains/${id}`, 'PUT', input),
   deleteChain: (id: number) => call<void>(`/approval-chains/${id}`, 'DELETE'),
+  deactivateChain: (id: number) => call<void>(`/approval-chains/${id}/deactivate`, 'POST'),
+  activateChain: (id: number) => call<void>(`/approval-chains/${id}/activate`, 'POST'),
 }

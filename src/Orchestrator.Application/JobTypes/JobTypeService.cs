@@ -49,6 +49,13 @@ public sealed class JobTypeService(IAppDbContext db)
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task ActivateAsync(int id, CancellationToken cancellationToken)
+    {
+        var jobType = await FindAsync(id, cancellationToken);
+        jobType.IsActive = true;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     private static void Apply(JobType jobType, JobTypeRequest request)
     {
         jobType.Description = request.Description;

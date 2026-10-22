@@ -50,6 +50,13 @@ public sealed class DepartmentService(IAppDbContext db, RoleService roles, Curre
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task ActivateAsync(int id, CancellationToken cancellationToken)
+    {
+        var department = await FindAsync(id, cancellationToken);
+        department.IsActive = true;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<RoleResponse>> RolesAsync(int id, CancellationToken cancellationToken) =>
         [.. (await FindWithRolesAsync(id, cancellationToken)).Roles.OrderBy(r => r.Name).Select(RoleResponse.From)];
 

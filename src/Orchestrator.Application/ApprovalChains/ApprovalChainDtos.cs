@@ -33,9 +33,9 @@ public sealed record CreateApprovalChainRequest
 public sealed record ApprovalStageResponse(int Sequence, int DepartmentId, string DepartmentName);
 
 public sealed record ApprovalChainResponse(
-    int Id, string Name, string? Description, bool IsDefault, int? CatalogId, IReadOnlyList<ApprovalStageResponse> Stages)
+    int Id, string Name, string? Description, bool IsDefault, int? CatalogId, bool IsActive, IReadOnlyList<ApprovalStageResponse> Stages)
 {
     public static ApprovalChainResponse From(ApprovalChain c) => new(
-        c.Id, c.Name, c.Description, c.IsDefault, c.CatalogId,
+        c.Id, c.Name, c.Description, c.IsDefault, c.CatalogId, c.IsActive,
         [.. c.Stages.OrderBy(s => s.Sequence).Select(s => new ApprovalStageResponse(s.Sequence, s.DepartmentId, s.Department!.Name))]);
 }

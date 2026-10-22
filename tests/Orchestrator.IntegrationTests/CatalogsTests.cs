@@ -96,6 +96,16 @@ public class CatalogsTests(ApiFixture api)
     }
 
     [Fact]
+    public async Task Activate_restores_the_record_and_unknown_is_404()
+    {
+        var id = await api.NewCatalog();
+        await api.Post($"catalogs/{id}/deactivate");
+        Assert.Equal(HttpStatusCode.NoContent, (await api.Post($"catalogs/{id}/activate")).Status);
+        Assert.True((await api.Get($"catalogs/{id}"))["isActive"].GetBoolean());
+        ProblemAssert.Is(await api.Post($"catalogs/{ApiFixture.UnknownId}/activate"), HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Deactivate_keeps_the_record_inactive()
     {
         var id = await api.NewCatalog();

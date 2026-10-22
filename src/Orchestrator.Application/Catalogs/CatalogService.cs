@@ -45,6 +45,13 @@ public sealed class CatalogService(IAppDbContext db)
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task ActivateAsync(int id, CancellationToken cancellationToken)
+    {
+        var catalog = await FindAsync(id, cancellationToken);
+        catalog.IsActive = true;
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task<CatalogResponse> CloneAsync(int id, CloneCatalogRequest request, CancellationToken cancellationToken)
     {
         var source = await FindAsync(id, cancellationToken);

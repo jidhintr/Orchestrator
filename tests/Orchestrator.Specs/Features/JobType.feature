@@ -53,6 +53,14 @@ Feature: Job type management
     Then the response status is 200
     And the response list contains an item where "sku" is "USE{unique}"
 
+  Scenario: Activate a deactivated job type
+    Given a job type "Fold {unique}" exists
+    When I send a POST request to "/api/v1/job-types/{id}/deactivate"
+    And I send a POST request to "/api/v1/job-types/{id}/activate"
+    Then the response status is 204
+    When I send a GET request to "/api/v1/job-types/{id}"
+    Then the response JSON "isActive" is "true"
+
   Scenario: A deactivated job type cannot be added to a catalog
     Given a job type "Stapling {unique}" exists
     When I send a POST request to "/api/v1/job-types/{id}/deactivate"
@@ -99,6 +107,7 @@ Feature: Job type management
       | POST   | /api/v1/job-types              |
       | PUT    | /api/v1/job-types/1            |
       | POST   | /api/v1/job-types/1/deactivate |
+      | POST   | /api/v1/job-types/1/activate   |
 
   Scenario: Changing a job type without an acting user is unauthorized
     Given I act as nobody

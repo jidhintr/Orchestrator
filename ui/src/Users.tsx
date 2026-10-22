@@ -1,5 +1,6 @@
 import { useAccess } from './access'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
+import { type Col, useGrid } from './grid'
 import { api, type Department, type Role, type User } from './api'
 import { Avatar, Chips, ChipPicker, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, toggled, locked, useList, useRunner, useToast, Form, sameSet, Submit } from './ui'
 
@@ -36,36 +37,44 @@ export function Users() {
     void load()
   }
 
-  const visible = items?.filter((u) =>
+  const all: Col<User>[] = [
+    { key: 'name', label: 'User', kind: 'text', locked: true, value: (u) => fullName(u), cell: (u) => <span className="who"><Avatar name={fullName(u)} /><button className="link" onClick={() => open({ mode: 'detail', id: u.id })}>{fullName(u)}</button></span> },
+    { key: 'email', label: 'Email', kind: 'text', value: (u) => u.email ?? '', cell: (u) => u.email },
+    { key: 'mobile', label: 'Mobile', kind: 'text', value: (u) => u.mobile, cell: (u) => u.mobile },
+    { key: 'departments', label: 'Departments', kind: 'text', value: (u) => u.departments.map((d) => d.name).join(', '), cell: (u) => <Chips items={u.departments.map((d) => d.name)} /> },
+    { key: 'roles', label: 'Roles', kind: 'text', value: (u) => effectiveRoles(u).join(', '), cell: (u) => <Chips items={effectiveRoles(u)} /> },
+    { key: 'status', label: 'Status', kind: 'text', value: (u) => (u.isActive ? 'Active' : 'Inactive'), cell: (u) => <StatusBadges active={u.isActive} /> },
+  ]
+  const grid = useGrid('grid:users', all)
+
+  const visible = items && grid.filter(items).filter((u) =>
     (status === 'all' || (status === 'active') === u.isActive) &&
     (department === 'all' || u.departments.some((d) => String(d.id) === department)) &&
     (role === 'all' || effectiveRoles(u).includes(role)) &&
     matches(query, fullName(u), u.email, u.mobile))
-  const dirty = query !== '' || status !== 'all' || department !== 'all' || role !== 'all'
+  const dirty = query !== '' || status !== 'all' || department !== 'all' || role !== 'all' || grid.active
 
   return (
     <Page title="Users" subtitle="People, their departments and roles."
       action={canEdit ? <button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New user</button> : null}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name, email or mobile"
-        onClear={() => { setQuery(''); setStatus('all'); setDepartment('all'); setRole('all') }}>
+        onClear={() => { grid.clear(); setQuery(''); setStatus('all'); setDepartment('all'); setRole('all') }}>
         <Select label="Status" value={status} onChange={setStatus} options={[['active', 'Active'], ['inactive', 'Inactive'], ['all', 'All']]} />
         <Select label="Department" value={department} onChange={setDepartment} options={[['all', 'All'], ...lookups.departments.map((d): [string, string] => [String(d.id), d.name])]} />
         <Select label="Role" value={role} onChange={setRole} options={[['all', 'All'], ...lookups.roles.map((r): [string, string] => [r.name, r.name])]} />
+        {grid.tools}
       </Filters>
+      {grid.panel}
       {items === null && !error && <p className="muted">Loading...</p>}
       {visible?.length === 0 && <p className="empty">{items?.length ? 'No users match the filters.' : 'No users yet.'}</p>}
       {visible && visible.length > 0 && (
         <table>
-          <thead><tr><th>User</th><th>Contact</th><th>Departments</th><th>Roles</th><th>Status</th><th><span className="sr">Actions</span></th></tr></thead>
+          <thead><tr>{grid.head}<th><span className="sr">Actions</span></th></tr></thead>
           <tbody>
             {visible.map((u) => (
               <tr key={u.id}>
-                <td data-label="User"><span className="who"><Avatar name={fullName(u)} /><button className="link" onClick={() => open({ mode: 'detail', id: u.id })}>{fullName(u)}</button></span></td>
-                <td data-label="Contact"><span className="stack">{u.email && <span>{u.email}</span>}<span className="muted">{u.mobile}</span></span></td>
-                <td data-label="Departments"><Chips items={u.departments.map((d) => d.name)} /></td>
-                <td data-label="Roles"><Chips items={effectiveRoles(u)} /></td>
-                <td data-label="Status"><StatusBadges active={u.isActive} /></td>
+                {grid.cells(u)}
                 <td data-label="" className="row-actions">{canEdit && <button className="secondary small" aria-label={`Edit ${fullName(u)}`} onClick={() => setPanel({ mode: 'detail', id: u.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
@@ -135,64 +144,58 @@ function Detail({ id, lookups, onChanged, onClose }: { id: number; lookups: Look
   const [user, setUser] = useState<User | null>(null)
   const [depts, setDepts] = useState<Set<string>>(new Set())
   const [roles, setRoles] = useState<Set<string>>(new Set())
-  const [password, setPassword] = useState('')
-  const { run, feedback, error, setError, busy } = useRunner()
+  const [version, setVersion] = useState(0)
+  const { run, feedback, error, setError } = useRunner()
 
-  const apply = (u: User) => {
+  const adopt = (u: User) => {
     setUser(u)
     setDepts(new Set(u.departments.map((d) => String(d.id))))
     setRoles(new Set(u.roles))
-    onChanged()
   }
 
   useEffect(() => {
-    api.user(id).then((u) => {
-      setUser(u)
-      setDepts(new Set(u.departments.map((d) => String(d.id))))
-      setRoles(new Set(u.roles))
-    }).catch((e) => setError(message(e)))
+    api.user(id).then(adopt).catch((e) => setError(message(e)))
   }, [id, setError])
 
   const save = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+    if (!user) return
     const form = e.currentTarget
     const input = contact(form)
-    const isActive = (new FormData(form).get('isActive') === 'on')
-    return run(async () => apply(await api.updateUser(id, { ...input, isActive })), 'Saved.')
+    const data = new FormData(form)
+    const password = String(data.get('password') ?? '')
+    return run(async () => {
+      let next = await api.updateUser(id, { ...input, isActive: data.get('isActive') === 'on' })
+      if (!sameSet(depts, new Set(next.departments.map((d) => String(d.id))))) next = await api.assignUserDepartments(id, [...depts].map(Number))
+      if (!sameSet(roles, new Set(next.roles))) next = await api.assignUserRoles(id, [...roles])
+      if (password) await api.setUserPassword(id, password)
+      adopt(next)
+      setVersion((v) => v + 1)
+      onChanged()
+    }, 'Saved.')
   }
 
-  const saveDepartments = () => run(async () => apply(await api.assignUserDepartments(id, [...depts].map(Number))), 'Departments saved.')
-  const savePassword = () => run(async () => {
-    await api.setUserPassword(id, password)
-    setPassword('')
-  }, 'Password set. Their sessions were ended.')
-  const saveRoles = () => run(async () => apply(await api.assignUserRoles(id, [...roles])), 'Roles saved.')
-
   if (!user) return error ? feedback : <p className="muted">Loading...</p>
+
+  const changed = !sameSet(depts, new Set(user.departments.map((d) => String(d.id)))) || !sameSet(roles, new Set(user.roles))
 
   return (
     <>
       <p className="meta"><Avatar name={fullName(user)} /><strong>{fullName(user)}</strong><StatusBadges active={user.isActive} /></p>
-      <Form onSubmit={save} requireChange key={JSON.stringify([user.firstName, user.lastName, user.email, user.mobile, user.isActive])}>
+      <Form onSubmit={save} requireChange className="ro-h" changed={changed} key={JSON.stringify([version, user.firstName, user.lastName, user.email, user.mobile, user.isActive])}>
         <ContactFields user={user} />
         <label className="switch"><input type="checkbox" role="switch" name="isActive" defaultChecked={user.isActive} /><span>Active</span></label>
-        <div className="actions"><Submit>Save details</Submit></div>
+        <fieldset><legend>Departments</legend>
+          <ChipPicker options={departmentOptions(lookups)} selected={depts} onToggle={(k) => setDepts((s) => toggled(s, k))} />
+        </fieldset>
+        <fieldset><legend>Roles from departments</legend><Chips items={user.departmentRoles} empty="None" /></fieldset>
+        <fieldset><legend>Extra roles</legend>
+          <ChipPicker options={roleOptions(lookups)} selected={roles} onToggle={(k) => setRoles((s) => toggled(s, k))} />
+        </fieldset>
+        <label className="edit-only">New password (leave empty to keep; setting it ends their sessions)<input name="password" type="password" minLength={10} maxLength={128} autoComplete="new-password" /></label>
+        {feedback}
+        <div className="actions"><Submit>Save</Submit><button type="button" className="secondary" onClick={onClose}>Close</button></div>
       </Form>
-      <fieldset><legend>Departments</legend>
-        <ChipPicker options={departmentOptions(lookups)} selected={depts} onToggle={(k) => setDepts((s) => toggled(s, k))} />
-        <div className="actions"><button disabled={busy || sameSet(depts, new Set(user.departments.map((d) => String(d.id))))} onClick={saveDepartments}>Save departments</button></div>
-      </fieldset>
-      <fieldset><legend>Roles from departments</legend><Chips items={user.departmentRoles} empty="None" /></fieldset>
-      <fieldset><legend>Extra roles</legend>
-        <ChipPicker options={roleOptions(lookups)} selected={roles} onToggle={(k) => setRoles((s) => toggled(s, k))} />
-        <div className="actions"><button disabled={busy || sameSet(roles, new Set(user.roles))} onClick={saveRoles}>Save roles</button></div>
-      </fieldset>
-      <fieldset><legend>Password</legend>
-        <label>New password<input type="password" value={password} minLength={10} maxLength={128} autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} /></label>
-        <div className="actions"><button disabled={busy || password.length < 10} onClick={savePassword}>Set password</button></div>
-      </fieldset>
-      {feedback}
-      <div className="actions"><button className="secondary" onClick={onClose}>Close</button></div>
     </>
   )
 }

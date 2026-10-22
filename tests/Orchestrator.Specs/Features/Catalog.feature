@@ -71,6 +71,14 @@ Feature: Catalog management
     When I send a GET request to "/api/v1/catalogs/{id}"
     Then the response JSON "isActive" is "false"
 
+  Scenario: Activate a deactivated catalog
+    Given a catalog with SKU "BAG{unique}" exists
+    When I send a POST request to "/api/v1/catalogs/{id}/deactivate"
+    And I send a POST request to "/api/v1/catalogs/{id}/activate"
+    Then the response status is 204
+    When I send a GET request to "/api/v1/catalogs/{id}"
+    Then the response JSON "isActive" is "true"
+
   Scenario: Duplicate SKU is rejected
     Given a catalog with SKU "BAG{unique}" exists
     When I send a POST request to "/api/v1/catalogs" with body:

@@ -119,6 +119,25 @@ public class ApprovalChainServiceTests
             _chains.UpdateAsync(9999, new UpdateApprovalChainRequest { Name = "Slow", DepartmentIds = [Qa] }, default));
 
     [Fact]
+    public async Task Deactivate_falls_back_to_the_default_chain_and_activate_restores_it()
+    {
+        var created = await _chains.CreateAsync(Create(), default);
+        await _chains.DeactivateAsync(created.Id, default);
+        Assert.False((await _chains.GetAsync(created.Id, default)).IsActive);
+        Assert.True((await _chains.ForCatalogAsync(_catalog.Id, default)).IsDefault);
+        await _chains.ActivateAsync(created.Id, default);
+        Assert.Equal(created.Id, (await _chains.ForCatalogAsync(_catalog.Id, default)).Id);
+    }
+
+    [Fact]
+    public async Task Deactivate_default_chain_is_conflict_and_unknown_is_not_found()
+    {
+        await Assert.ThrowsAsync<ConflictException>(() => _chains.DeactivateAsync(1, default));
+        await Assert.ThrowsAsync<NotFoundException>(() => _chains.DeactivateAsync(9999, default));
+        await Assert.ThrowsAsync<NotFoundException>(() => _chains.ActivateAsync(9999, default));
+    }
+
+    [Fact]
     public async Task Delete_removes_custom_chain()
     {
         var created = await _chains.CreateAsync(Create(), default);
