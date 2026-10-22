@@ -1,0 +1,38 @@
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Orchestrator.Application.Errors;
+
+namespace Orchestrator.Api.Errors;
+
+public sealed partial class GlobalExceptionHandler(IProblemDetailsService problemDetails, ILogger<GlobalExceptionHandler> logger)
+    : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
+    {
+        var (status, title, detail) = exception switch
+        {
+            NotFoundException e => (StatusCodes.Status404NotFound, "Resource not found.", e.Message),
+            UnauthorizedException e => (StatusCodes.Status401Unauthorized, "Unauthorized.", e.Message),
+            ForbiddenException e => (StatusCodes.Status403Forbidden, "Forbidden.", e.Message),
+            BadRequestException e => (StatusCodes.Status400BadRequest, "Bad request.", e.Message),
+            ConflictException e => (StatusCodes.Status409Conflict, "Conflict.", e.Message),
+            _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.", (string?)null),
+        };
+
+        if (status == StatusCodes.Status500InternalServerError)
+        {
+            LogUnhandled(exception, httpContext.Request.Method, httpContext.Request.Path);
+        }
+
+        httpContext.Response.StatusCode = status;
+        return await problemDetails.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = httpContext,
+            Exception = exception,
+            ProblemDetails = new ProblemDetails { Status = status, Title = title, Detail = detail },
+        });
+    }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Unhandled exception on {Method} {Path}")]
+    private partial void LogUnhandled(Exception exception, string method, PathString path);
+}

@@ -1,36 +1,15 @@
-# Current Working State
+# Working State
 
-## Current objective
-Engineering foundation for the Orchestrator API platform. No business feature started.
+Short-lived. Delete or rewrite when the work it describes is done. Decisions live in `decisions.md`, open questions in `requirements.md`.
 
-## Current status
-Ready for review (foundation complete locally; CI workflow not yet run on GitHub).
+**Status:** Four-project split done (ADR-0004); all 131 scenarios pass.
+Migrations through `UserDepartments` exist; apply them to the dev database with `dotnet ef database update`.
 
-## Relevant modules
-See [architecture overview](architecture/overview.md). Only live slice: `HealthController` -> health check `postgres`.
+**Database:** the existing Postgres container on host port 5432, database `OrchStore`, schema `biz`, user `sa`. The repo ships no Postgres container.
 
-## Decisions and constraints
-- [ADR-0001](decisions/ADR-0001-foundation-stack.md): MVC controllers, 4 layers, EF Core/Npgsql, xUnit v3 + Testcontainers, GitHub Actions.
-- Host port 5432 is held by an unrelated container (`postgres-prod`); this repo uses 5433. Do not touch it.
-- Business domain, auth, UI framework, API versioning, SLOs, deployment target: **undecided, ask the owner.**
+**Risks:** the `X-Acting-User-Id` header is trusted (no real authentication): never expose beyond local development. Deactivating a
+department does not check its users. k6 thresholds are provisional. The `case_insensitive` collation needs ICU (`postgres:17-alpine` works).
 
-## Completed (verified 2026-10-21, local)
-- Solution scaffold builds with 0 warnings; `dotnet format --verify-no-changes` clean.
-- 6 tests pass (unit + integration against real Postgres, incl. DB-down -> 503).
-- API run locally: `/api/health` 200, Scalar at `/scalar/v1` 200, `k6 run k6/health.js` smoke passed.
+**Not yet run:** `.http` files in an IDE client, the GitHub Actions workflow, k6 load/spike/soak.
 
-## Remaining
-- Define first business use case(s) in `docs/requirements/use-cases.md`.
-- Decide auth, API versioning, SLOs, deployment (each needs an ADR).
-- Push to GitHub and confirm `.github/workflows/ci.yml` (unverified), then enable branch protection.
-- Run k6 load/spike profiles once real endpoints exist.
-
-## Verification
-See Completed. Not run: `.http` file in an IDE client (equivalent `curl` used), CI workflow, k6 load/spike/soak.
-
-## Known issues and risks
-- `Application` and `Domain` projects intentionally contain no code yet.
-- k6 thresholds (p95 < 500 ms, errors < 1%) are provisional, not SLOs.
-
-## Next action
-Owner supplies the first business use case; then follow the `implement-feature` skill.
+**Next:** owner reviews; phase 2 (orders, notes, completion, notifications, client registration, employee read-scoping); real authentication.

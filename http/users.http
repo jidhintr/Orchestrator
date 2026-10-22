@@ -1,0 +1,133 @@
+### Users API v1. Reads are anonymous; changes send X-Acting-User-Id (temporary stand-in for authentication; 1 = seeded super admin, 2 = seeded admin).
+### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### List all users
+GET {{baseUrl}}/api/v1/users
+Accept: application/json
+
+### Admin creates an employee: no departmentIds means the Unassigned department
+# @name create
+POST {{baseUrl}}/api/v1/users
+X-Acting-User-Id: 2
+Content-Type: application/json
+
+{
+  "firstName": "Asha",
+  "lastName": "Rao",
+  "email": "asha.rao@example.com",
+  "mobile": "9876543210"
+}
+
+### Get the user created above (departments, departmentRoles inherited, roles = own extras)
+GET {{baseUrl}}/api/v1/users/{{create.response.body.$.id}}
+Accept: application/json
+
+### Put the user into departments (4 = QA, 5 = Delivery); an empty list means Unassigned
+PUT {{baseUrl}}/api/v1/users/{{create.response.body.$.id}}/departments
+X-Acting-User-Id: 2
+Content-Type: application/json
+
+{
+  "departmentIds": [4, 5]
+}
+
+### Give the user an extra role (replaces the user's own roles)
+PUT {{baseUrl}}/api/v1/users/{{create.response.body.$.id}}/roles
+X-Acting-User-Id: 2
+Content-Type: application/json
+
+{
+  "roles": ["Manager"]
+}
+
+### Update the profile (isActive false deactivates)
+PUT {{baseUrl}}/api/v1/users/{{create.response.body.$.id}}
+X-Acting-User-Id: 2
+Content-Type: application/json
+
+{
+  "firstName": "Asha",
+  "lastName": "Rao",
+  "email": "asha.rao@example.com",
+  "mobile": "9876543210",
+  "isActive": true
+}
+
+### Failure: no acting user
+POST {{baseUrl}}/api/v1/users
+Content-Type: application/json
+
+{
+  "firstName": "No",
+  "lastName": "Actor",
+  "mobile": "9876543210"
+}
+
+### Failure: an admin cannot create admins
+POST {{baseUrl}}/api/v1/users
+X-Acting-User-Id: 2
+Content-Type: application/json
+
+{
+  "firstName": "Bad",
+  "lastName": "Admin",
+  "mobile": "9876543210",
+  "roles": ["Admin"]
+}
+
+### Failure: an admin cannot edit the super admin
+PUT {{baseUrl}}/api/v1/users/1
+X-Acting-User-Id: 2
+Content-Type: application/json
+
+{
+  "firstName": "Super",
+  "lastName": "Admin",
+  "mobile": "9876543210",
+  "isActive": true
+}
+
+### Failure: invalid body
+POST {{baseUrl}}/api/v1/users
+X-Acting-User-Id: 2
+Content-Type: application/json
+
+{
+  "firstName": "A",
+  "lastName": "",
+  "email": "not-an-email",
+  "mobile": "abc"
+}
+
+### Failure: unknown role
+PUT {{baseUrl}}/api/v1/users/{{create.response.body.$.id}}/roles
+X-Acting-User-Id: 2
+Content-Type: application/json
+
+{
+  "roles": ["Wizard"]
+}
+
+### Failure: unknown department
+PUT {{baseUrl}}/api/v1/users/{{create.response.body.$.id}}/departments
+X-Acting-User-Id: 2
+Content-Type: application/json
+
+{
+  "departmentIds": [999999]
+}
+
+### Failure: duplicate email
+POST {{baseUrl}}/api/v1/users
+X-Acting-User-Id: 2
+Content-Type: application/json
+
+{
+  "firstName": "Dup",
+  "lastName": "User",
+  "email": "ADMIN@orchestrator.local",
+  "mobile": "9876543210"
+}
+
+### Failure: unknown user
+GET {{baseUrl}}/api/v1/users/999999
