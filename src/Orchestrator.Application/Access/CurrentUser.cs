@@ -7,6 +7,8 @@ namespace Orchestrator.Application.Access;
 public sealed record Actor(int Id, int Rank, IReadOnlySet<int> DepartmentIds, IReadOnlySet<int> DepartmentRoleIds)
 {
     public bool IsManager => Rank == Domain.Rank.Manager;
+
+    public bool IsClient => DepartmentRoleIds.Contains(SystemIds.ClientRole);
 }
 
 public sealed class CurrentUser(ICurrentUserId current, IAppDbContext db)

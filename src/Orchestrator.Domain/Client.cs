@@ -36,4 +36,6 @@ public sealed class Client : BaseEntity
     public ClientStatus Status { get; set; } = ClientStatus.Active;
 
     public decimal TierDiscountPercent { get; set; }
+
+    public int? UserId { get; set; }
 }

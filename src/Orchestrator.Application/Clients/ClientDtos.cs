@@ -22,6 +22,9 @@ public sealed record ClientRequest
 
     [EnumDataType(typeof(ClientTier))]
     public ClientTier Tier { get; init; } = ClientTier.Normal;
+
+    [Range(1, int.MaxValue)]
+    public int? UserId { get; init; }
 }
 
 public sealed record ClientStatusRequest
@@ -32,8 +35,8 @@ public sealed record ClientStatusRequest
 
 public sealed record ClientResponse(
     int Id, string CompanyName, string ContactName, string Email, string Phone, string ShippingAddress,
-    ClientTier Tier, ClientStatus Status, decimal TierDiscountPercent, bool IsActive)
+    ClientTier Tier, ClientStatus Status, decimal TierDiscountPercent, bool IsActive, int? UserId)
 {
     public static ClientResponse From(Client c) => new(
-        c.Id, c.CompanyName, c.ContactName, c.Email, c.Phone, c.ShippingAddress, c.Tier, c.Status, c.TierDiscountPercent, c.IsActive);
+        c.Id, c.CompanyName, c.ContactName, c.Email, c.Phone, c.ShippingAddress, c.Tier, c.Status, c.TierDiscountPercent, c.IsActive, c.UserId);
 }

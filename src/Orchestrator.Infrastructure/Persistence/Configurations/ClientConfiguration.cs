@@ -19,5 +19,6 @@ internal sealed class ClientConfiguration : IEntityTypeConfiguration<Client>
         builder.Property(c => c.Status).HasConversion<string>().HasMaxLength(20);
         builder.Property(c => c.TierDiscountPercent).HasPrecision(5, 2);
         builder.HasIndex(c => c.Email).IsUnique();
+        builder.HasOne<User>().WithOne().HasForeignKey<Client>(c => c.UserId).OnDelete(DeleteBehavior.Restrict);
     }
 }

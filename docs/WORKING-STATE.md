@@ -2,7 +2,7 @@
 
 Short-lived. Delete or rewrite when the work it describes is done. Decisions live in `decisions.md`, open questions in `requirements.md`.
 
-**Status:** Four-project split done (ADR-0004); all 131 scenarios pass.
+**Status:** Orders first pass added (UC-008, ADR-0006); migration `Orders` not yet applied to the dev database. 4 pre-existing failures: broken-DB tests fail because dev Super Admin seeding hits the unreachable DB at startup.
 Migrations through `UserDepartments` exist; apply them to the dev database with `dotnet ef database update`.
 
 **Database:** the existing Postgres container on host port 5432, database `OrchStore`, schema `biz`, user `sa`. The repo ships no Postgres container.

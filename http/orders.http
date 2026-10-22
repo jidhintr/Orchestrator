@@ -1,0 +1,118 @@
+### Orders API v1. Every request needs the access token from the sign in request below.
+### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### Sign in (put login and password in http/http-client.private.env.json, which is git-ignored)
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{login}}",
+  "password": "{{password}}"
+}
+
+### Create a client for the order
+# @name client
+POST {{baseUrl}}/api/v1/clients
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "companyName": "Orders Demo",
+  "contactName": "Jane Doe",
+  "email": "orders-demo@example.com",
+  "phone": "+15551234567",
+  "shippingAddress": "1 Main St"
+}
+
+### Create a catalog for the order
+# @name catalog
+POST {{baseUrl}}/api/v1/catalogs
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "sku": "ORDERS-DEMO", "name": "Orders demo", "jobTypeIds": [1, 2, 4] }
+
+### Place an order (stages are copied from the catalog, status starts PendingApproval)
+# @name order
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "clientId": {{client.response.body.$.id}}, "catalogId": {{catalog.response.body.$.id}}, "quantity": 500, "dueDate": "2030-01-31", "reference": "PO-1001", "notes": "Matt lamination", "priority": "High" }
+
+### List orders
+GET {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json
+
+### Get the order
+GET {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json
+
+### Event history (append-only)
+GET {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/events
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json
+
+### Adjust the quote (Estimation department managers, admins and super admins; logged as QuoteAdjusted)
+POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/quote
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "total": 4200.00, "reason": "Bulk rate agreed with the client" }
+
+### Zero quantity returns 400
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "clientId": {{client.response.body.$.id}}, "catalogId": {{catalog.response.body.$.id}}, "quantity": 0 }
+
+### Request a priority change (logged only; the priority stays until Estimation approves)
+POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/priority-requests
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "priority": "UltraHigh", "reason": "Client needs it sooner" }
+
+### Same priority returns 400
+POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/priority-requests
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "priority": "High" }
+
+### Cancel the order (returns to the Estimation department)
+POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/cancel
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "reason": "Stock deficit" }
+
+### Cancelling again returns 409
+POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/cancel
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "reason": "Stock deficit" }
+
+### Unknown catalog returns 400
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "clientId": {{client.response.body.$.id}}, "catalogId": 999999, "quantity": 1 }
+
+### Missing clientId returns 400 for staff
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "catalogId": {{catalog.response.body.$.id}}, "quantity": 1 }
+
+### Unknown id returns 404
+GET {{baseUrl}}/api/v1/orders/999999
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json

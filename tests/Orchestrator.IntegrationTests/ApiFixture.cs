@@ -154,7 +154,7 @@ public sealed class ApiFixture : IAsyncLifetime
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<OrchestratorDbContext>();
-        db.Orders.Add(new Order { CatalogId = catalogId });
+        db.Orders.Add(new Order { CatalogId = catalogId, ClientId = await NewClient() });
         await db.SaveChangesAsync();
     }
 
@@ -209,8 +209,9 @@ public sealed class ApiFixture : IAsyncLifetime
         jobTypeIds,
     };
 
-    public static object ClientBody(string? email = null, string tier = "Normal") => new
+    public static object ClientBody(string? email = null, string tier = "Normal", int? userId = null) => new
     {
+        userId,
         companyName = "Company " + Unique(),
         contactName = "Jane Doe",
         email = email ?? $"c{Unique()}@acme.test",

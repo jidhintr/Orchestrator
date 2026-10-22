@@ -354,3 +354,16 @@ td:first-child { min-width: 180px; }
 .pane:disabled .ro-h .row, .pane:disabled .ro-h .row.three { grid-template-columns: 1fr; gap: 14px; }
 
 .pane:disabled .edit-only { display: none; }
+
+.health-banner { position: fixed; inset: 0 0 auto 0; z-index: 60; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 11px 20px; background: var(--bad); color: #fff; font-weight: 550; box-shadow: 0 2px 10px rgb(0 0 0 / .3); }
+.health-banner strong { font-size: .8rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+html.has-banner body { padding-top: var(--banner-h, 44px); }
+html.has-banner .error-page { top: var(--banner-h, 44px); }
+@media (min-width: 861px) { html.has-banner nav { top: var(--banner-h, 44px); } }
+.health-toast { position: fixed; right: 20px; bottom: 20px; z-index: 70; display: grid; gap: 12px; width: min(380px, calc(100vw - 32px)); padding: 14px 16px 18px; overflow: hidden; background: var(--card); border: 1px solid var(--line); border-left: 4px solid var(--bad); border-radius: var(--r-m); box-shadow: 0 8px 28px rgb(21 23 28 / .28); animation: slide .2s ease; }
+.health-toast.good { border-left-color: var(--ok); }
+.health-toast p { font-weight: 550; }
+.health-toast .timer { position: absolute; left: 0; bottom: 0; width: 100%; height: 3px; background: var(--bad); transform-origin: left; animation: shrink linear forwards; }
+.health-toast.good .timer { background: var(--ok); }
+@keyframes shrink { to { transform: scaleX(0); } }
+@media (max-width: 860px) { .health-toast { bottom: 84px; right: 16px; } }

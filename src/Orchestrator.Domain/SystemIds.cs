@@ -10,5 +10,6 @@ public static class SystemIds
     public const int AdministrativesDepartment = 2;
     public const int CustomersDepartment = 6;
     public const int UnassignedDepartment = 7;
+    public const int EstimationDepartment = 8;
     public const int SuperAdminUser = 1;
 }

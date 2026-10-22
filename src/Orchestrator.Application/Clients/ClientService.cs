@@ -48,6 +48,7 @@ public sealed class ClientService(IAppDbContext db)
         client.Phone = request.Phone.Trim();
         client.ShippingAddress = request.ShippingAddress.Trim();
         client.Tier = request.Tier;
+        client.UserId = request.UserId;
         client.TierDiscountPercent = request.Tier switch
         {
             ClientTier.Gold => 5m,

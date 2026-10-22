@@ -9,6 +9,7 @@ import { Departments } from './Departments'
 import { ErrorPage } from './ErrorPage'
 import { JobTypes } from './JobTypes'
 import { Login } from './Login'
+import { Orders } from './Orders'
 import { Profile } from './Profile'
 import { Roles } from './Roles'
 import { Users } from './Users'
@@ -19,6 +20,7 @@ const pages = {
   catalogs: { title: 'Catalogs', icon: 'catalogs', view: <Catalogs /> },
   'job-types': { title: 'Job types', icon: 'jobtypes', view: <JobTypes /> },
   approvals: { title: 'Approvals', icon: 'chains', view: <Chains /> },
+  orders: { title: 'Orders', icon: 'orders', view: <Orders /> },
   clients: { title: 'Clients', icon: 'clients', view: <Clients /> },
   departments: { title: 'Departments', icon: 'departments', view: <Departments /> },
   users: { title: 'Users', icon: 'users', view: <Users /> },
@@ -31,7 +33,7 @@ type Route = keyof typeof pages
 const groups: { title: string; routes: Route[] }[] = [
   { title: 'Overview', routes: ['dashboard'] },
   { title: 'Production', routes: ['catalogs', 'job-types', 'approvals'] },
-  { title: 'Customers', routes: ['clients'] },
+  { title: 'Customers', routes: ['orders', 'clients'] },
   { title: 'People', routes: ['departments', 'users', 'roles'] },
 ]
 
@@ -73,6 +75,15 @@ export function App() {
     }
     document.addEventListener('click', onClick)
     return () => document.removeEventListener('click', onClick)
+  }, [])
+
+  useEffect(() => {
+    const recovered = () => {
+      setDown(null)
+      setAttempt((a) => a + 1)
+    }
+    addEventListener('api:recovered', recovered)
+    return () => removeEventListener('api:recovered', recovered)
   }, [])
 
   useEffect(() => {

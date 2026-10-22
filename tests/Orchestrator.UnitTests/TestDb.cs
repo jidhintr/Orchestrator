@@ -55,6 +55,22 @@ internal static class TestDb
         return jobType;
     }
 
+    public static Client AddClient(this OrchestratorDbContext db, string email = "client@test.local", int? userId = null)
+    {
+        var client = new Client { CompanyName = "Acme", ContactName = "Jane", Email = email, Phone = "+1234567890", ShippingAddress = "1 Main St", UserId = userId };
+        db.Clients.Add(client);
+        db.SaveChanges();
+        return client;
+    }
+
+    public static Order AddOrder(this OrchestratorDbContext db, int catalogId, int? clientId = null)
+    {
+        var order = new Order { CatalogId = catalogId, ClientId = clientId ?? db.AddClient($"c{Guid.NewGuid():N}@test.local").Id };
+        db.Orders.Add(order);
+        db.SaveChanges();
+        return order;
+    }
+
     public static Catalog AddCatalog(this OrchestratorDbContext db, string sku, params JobType[] steps)
     {
         var catalog = new Catalog { Sku = sku, Name = $"Catalog {sku}", BasePrice = 10m };

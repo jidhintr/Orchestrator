@@ -19,6 +19,10 @@ public interface IAppDbContext
 
     DbSet<Order> Orders { get; }
 
+    DbSet<OrderStage> OrderStages { get; }
+
+    DbSet<OrderEventHistory> OrderEvents { get; }
+
     DbSet<Client> Clients { get; }
 
     DbSet<ApprovalChain> ApprovalChains { get; }

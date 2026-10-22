@@ -51,15 +51,27 @@ static async Task SeedDevSuperAdminAsync(WebApplication app)
         return;
     }
 
-    using var scope = app.Services.CreateScope();
-    var db = scope.ServiceProvider.GetRequiredService<OrchestratorDbContext>();
-    if ((await db.Database.GetPendingMigrationsAsync()).Any() || await db.Credentials.AnyAsync(c => c.UserId == SystemIds.SuperAdminUser))
+    try
     {
-        return;
-    }
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<OrchestratorDbContext>();
+        if ((await db.Database.GetPendingMigrationsAsync()).Any() || await db.Credentials.AnyAsync(c => c.UserId == SystemIds.SuperAdminUser))
+        {
+            return;
+        }
 
-    await scope.ServiceProvider.GetRequiredService<AuthService>().SetPasswordAsync(SystemIds.SuperAdminUser, password, default);
-    await db.SaveChangesAsync();
+        await scope.ServiceProvider.GetRequiredService<AuthService>().SetPasswordAsync(SystemIds.SuperAdminUser, password, default);
+        await db.SaveChangesAsync();
+    }
+    catch (Exception e) when (e is not OperationCanceledException)
+    {
+        // The API must still start with the database down so readiness can report it instead of the process dying.
+        SeedSkipped(app.Logger, e.GetType().Name, null);
+    }
 }
 
-public partial class Program;
+public partial class Program
+{
+    private static readonly Action<ILogger, string, Exception?> SeedSkipped = LoggerMessage.Define<string>(
+        LogLevel.Warning, new EventId(1, "SeedSkipped"), "Dev super admin seed skipped, the database is unavailable ({Reason}).");
+}

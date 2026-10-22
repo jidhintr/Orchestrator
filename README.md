@@ -13,10 +13,10 @@ echo ORCHESTRATOR_HOST_DB_PASSWORD=<sa password> > .env   # gitignored
 docker compose up -d --build            # API on http://localhost:8080, needs your Postgres container on host port 5432
 dotnet user-secrets set "ConnectionStrings:Orchestrator" "Host=localhost;Port=5432;Database=OrchStore;Username=sa;Password=<sa password>" --project src/Orchestrator.Api
 dotnet ef database update --project src/Orchestrator.Infrastructure --startup-project src/Orchestrator.Api
-dotnet run --project src/Orchestrator.Api --launch-profile http
+dotnet run --project src/Orchestrator.Api --launch-profile https
 ```
 Tables live in schema `biz`. The compose `api` service migrates at startup (`MigrateOnStartup=true`); a plain `dotnet run` does not.
-API http://localhost:5176, docs (Scalar, Development only) http://localhost:5176/scalar/v1.
+API https://localhost:7098 (trust the dev certificate once: `dotnet dev-certs https --trust`), docs (Scalar, Development only) https://localhost:7098/scalar/v1.
 Requests: open `http/*.http` and pick the `local` environment.
 
 ## Check
@@ -47,7 +47,7 @@ CI (`.github/workflows/ci.yml`): format, build, tests, EF drift check, vulnerabl
 
 ## UI
 
-`ui/` is a React + TypeScript PWA (Vite). Start the API (port 5176), then `cd ui; npm install; npm run dev`.
+`ui/` is a React + TypeScript PWA (Vite). Start the API (https://localhost:7098), then `cd ui; npm install; npm run dev`.
 Vite proxies `/api` to the API, so no CORS setup is needed. Screens: Departments, Users, Roles, Clients, Catalogs and Approvals (left nav on desktop, bottom tabs on phones), each with search and status/type/department/role filters.
 Filters run in the browser on the full list (the API has no pagination yet). The UI opens on a sign-in page (email or mobile + password) and keeps the access token in memory; the refresh cookie restores the session after a reload.
 

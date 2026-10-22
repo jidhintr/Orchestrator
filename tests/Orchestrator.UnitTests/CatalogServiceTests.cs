@@ -88,8 +88,7 @@ public class CatalogServiceTests
     public async Task Update_catalog_with_orders_is_conflict()
     {
         var created = await _catalogs.CreateAsync(Request(), default);
-        _db.Orders.Add(new Order { CatalogId = created.Id });
-        _db.SaveChanges();
+        _db.AddOrder(created.Id);
         await Assert.ThrowsAsync<ConflictException>(() => _catalogs.UpdateAsync(created.Id, Request("BOOK-2"), default));
     }
 
@@ -122,8 +121,7 @@ public class CatalogServiceTests
     public async Task Deactivate_catalog_with_orders_is_conflict()
     {
         var created = await _catalogs.CreateAsync(Request(), default);
-        _db.Orders.Add(new Order { CatalogId = created.Id });
-        _db.SaveChanges();
+        _db.AddOrder(created.Id);
         await Assert.ThrowsAsync<ConflictException>(() => _catalogs.DeactivateAsync(created.Id, default));
     }
 
@@ -148,8 +146,7 @@ public class CatalogServiceTests
     public async Task Clone_is_allowed_when_source_has_orders()
     {
         var source = await _catalogs.CreateAsync(Request(), default);
-        _db.Orders.Add(new Order { CatalogId = source.Id });
-        _db.SaveChanges();
+        _db.AddOrder(source.Id);
         var clone = await _catalogs.CloneAsync(source.Id, new CloneCatalogRequest { Sku = "BOOK-C", Name = "Copy" }, default);
         Assert.Equal("BOOK-C", clone.Sku);
     }

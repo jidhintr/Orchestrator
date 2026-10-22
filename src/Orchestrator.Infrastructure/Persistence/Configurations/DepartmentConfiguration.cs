@@ -24,7 +24,8 @@ internal sealed class DepartmentConfiguration : IEntityTypeConfiguration<Departm
             Seed(3, "Accounting", "ACCOUNTING"),
             Seed(4, "Quality Check", "QUALITY_CHECK"),
             Seed(6, "Customers", "CUSTOMERS"),
-            Seed(7, "Unassigned", "UNASSIGNED"));
+            Seed(7, "Unassigned", "UNASSIGNED"),
+            Seed(SystemIds.EstimationDepartment, "Estimation", "ESTIMATION"));
 
         builder.HasMany(d => d.Roles).WithMany(r => r.Departments).UsingEntity(j =>
         {

@@ -18,7 +18,7 @@ public class DepartmentServiceTests
     public async Task List_returns_seeded_departments_ordered_by_name()
     {
         var list = await As().ListAsync(default);
-        Assert.Equal(["Accounting", "Administratives", "Customers", "Quality Check", "Unassigned"], list.Select(d => d.Name));
+        Assert.Equal(["Accounting", "Administratives", "Customers", "Estimation", "Quality Check", "Unassigned"], list.Select(d => d.Name));
     }
 
     [Fact]

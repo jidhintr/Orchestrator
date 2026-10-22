@@ -6,6 +6,7 @@ using Orchestrator.Application.Catalogs;
 using Orchestrator.Application.Clients;
 using Orchestrator.Application.Departments;
 using Orchestrator.Application.JobTypes;
+using Orchestrator.Application.Orders;
 using Orchestrator.Application.Roles;
 using Orchestrator.Application.Users;
 
@@ -19,6 +20,7 @@ public static class DependencyInjection
         .AddScoped<RoleService>()
         .AddScoped<CatalogService>()
         .AddScoped<ClientService>()
+        .AddScoped<OrderService>()
         .AddScoped<ApprovalChainService>()
         .AddScoped<JobTypeService>()
         .AddScoped<CurrentUser>()

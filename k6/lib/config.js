@@ -1,4 +1,4 @@
-export const BASE_URL = __ENV.BASE_URL || 'http://localhost:5176';
+export const BASE_URL = __ENV.BASE_URL || 'https://localhost:7098';
 
 // Shared pass/fail gates. Provisional: no SLOs are defined yet.
 const thresholds = {
@@ -33,5 +33,5 @@ export function buildOptions() {
   if (!profiles[name]) {
     throw new Error(`Unknown PROFILE '${name}'. Use: ${Object.keys(profiles).join(', ')}`);
   }
-  return { ...profiles[name], thresholds };
+  return { ...profiles[name], thresholds, insecureSkipTLSVerify: BASE_URL.startsWith('https://localhost') };
 }

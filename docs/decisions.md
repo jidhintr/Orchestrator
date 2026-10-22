@@ -76,3 +76,13 @@ Add a short section for each significant choice (context, decision, alternatives
 - **Access:** every endpoint needs a token except `/api/health`, `/api/health/live`, `/api/health/ready`, sign in, refresh, logout (and Scalar/OpenAPI in Development). Rank rules (`CurrentUser`, `[AdminOnly]`) are unchanged.
 - **Dev phase:** only the seeded Super Admin exists; in Development its password comes from `Auth:DevSeedPassword`. Remove it, add OTP/MFA and the rest at the end of dev: see `docs/TODO-auth-end-of-dev.md`.
 - **Supersedes:** ADR-0003 acting-user header.
+
+## ADR-0006: Orders, Estimation department and client login link (2026-10-22, owner)
+- **Decision:** `Order` references `Client` and `Catalog`, holds `Priority` (Normal, High, Premium, UltraHigh) and `Status` (PendingApproval, InProgress, OnHold, Completed, Cancelled). `order_stages` copies the catalog steps at placement; `order_event_history` is append-only.
+- **Estimation (ED):** seeded system department id 8 (`Estimation`), the return target of a cancelled order. Name and code are placeholders pending owner confirmation.
+- **Client login:** `clients.UserId` (nullable, unique FK to `users`) ties a Client-role user to their client; client users are scoped to that client's orders.
+- **Open:** which department's manager may act on a stage (no job-type to department mapping yet), so cancel and priority requests are Manager-or-above anywhere for now.
+
+## ADR-0007: Order quote snapshot (2026-10-22, owner)
+- **Decision:** `orders` stores `Quantity`, `UnitPrice`, `CatalogDiscountPercent`, `ClientDiscountPercent` and `QuotedTotal` at placement, so later catalog or tier changes do not rewrite a quote. `QuotedTotal` = `UnitPrice` x `Quantity` x (1 - catalog %) x (1 - client %), rounded to 2 decimals half away from zero. Estimation may override it before approval (`POST orders/{id}/quote`, event `QuoteAdjusted`).
+- **Open:** tax, labor cost in the quote, per-job-type pricing, and what Approve does to the quote (approval flow is next).

@@ -133,7 +133,7 @@ function Detail({ id, onChanged, onClose }: { id: number; onChanged: () => void;
 
   const save = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    const input = read(e.currentTarget)
+    const input = { ...read(e.currentTarget), userId: client?.userId }
     const status = String(new FormData(e.currentTarget).get('status')) as ClientStatus
     return run(async () => {
       let next = await api.updateClient(id, input)

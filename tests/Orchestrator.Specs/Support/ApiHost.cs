@@ -38,7 +38,8 @@ internal static class ApiHost
     {
         using var scope = _factory!.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<OrchestratorDbContext>();
-        db.Orders.Add(new Order { CatalogId = catalogId });
+        var client = new Client { CompanyName = "Acme", ContactName = "Jane", Email = $"o{Guid.NewGuid():N}@spec.local", Phone = "+1234567890", ShippingAddress = "1 Main St" };
+        db.Orders.Add(new Order { CatalogId = catalogId, Client = client });
         await db.SaveChangesAsync();
     }
 

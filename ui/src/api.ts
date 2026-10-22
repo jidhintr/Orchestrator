@@ -41,9 +41,45 @@ export interface Client {
   status: ClientStatus
   tierDiscountPercent: number
   isActive: boolean
+  userId: number | null
 }
 
-export type ClientInput = Omit<Client, 'id' | 'status' | 'tierDiscountPercent' | 'isActive'>
+export type ClientInput = Omit<Client, 'id' | 'status' | 'tierDiscountPercent' | 'isActive' | 'userId'> & { userId?: number | null }
+
+export type OrderPriority = 'Normal' | 'High' | 'Premium' | 'UltraHigh'
+export type OrderStatus = 'PendingApproval' | 'InProgress' | 'OnHold' | 'Completed' | 'Cancelled'
+
+export interface Order {
+  id: number
+  clientId: number
+  clientCompanyName: string
+  catalogId: number
+  catalogSku: string
+  catalogName: string
+  quantity: number
+  dueDate: string | null
+  reference: string | null
+  notes: string | null
+  unitPrice: number
+  catalogDiscountPercent: number
+  clientDiscountPercent: number
+  quotedTotal: number
+  priority: OrderPriority
+  status: OrderStatus
+  returnedToDepartmentId: number | null
+  placedAt: string
+  stages: { jobTypeId: number; jobTypeName: string; sequence: number; enteredAt: string | null; exitedAt: string | null }[]
+}
+
+export interface OrderEvent {
+  id: number
+  type: 'Placed' | 'PriorityChangeRequested' | 'QuoteAdjusted' | 'Cancelled'
+  actorUserId: number
+  fromValue: string | null
+  toValue: string | null
+  reason: string | null
+  at: string
+}
 
 export interface JobType {
   id: number
@@ -154,7 +190,17 @@ export const onServiceError = (fn: (e: ServiceError) => void) => {
 
 const fail = (e: ServiceError) => {
   report(e)
+  dispatchEvent(new Event('api:failure'))
   return e
+}
+
+const isJson = (r: Response) => r.headers.get('content-type')?.includes('json') ?? false
+// A gateway or dev proxy answering for a dead API sends plain text or nothing; real API errors are always problem+json.
+const broken = (r: Response) => r.status !== 429 && (r.status >= 500 || (!r.ok && !isJson(r)))
+
+async function unavailable(r: Response) {
+  const problem = isJson(r) ? await r.json().catch(() => null) : null
+  return fail(new ServiceError(problem ? 'server' : 'offline', typeof problem?.correlationId === 'string' ? problem.correlationId : undefined))
 }
 
 async function call<T>(path: string, method = 'GET', body?: unknown, retried = false): Promise<T> {
@@ -173,10 +219,7 @@ async function call<T>(path: string, method = 'GET', body?: unknown, retried = f
     endSession()
     throw new Error('Your session has expired. Sign in again.')
   }
-  if (response.status >= 500) {
-    const problem = response.headers.get('content-type')?.includes('json') ? await response.json().catch(() => null) : null
-    throw fail(new ServiceError(problem ? 'server' : 'offline', typeof problem?.correlationId === 'string' ? problem.correlationId : undefined))
-  }
+  if (broken(response)) throw await unavailable(response)
   if (!response.ok) {
     throw new Error(await problemMessage(response))
   }
@@ -201,6 +244,7 @@ export async function signIn(login: string, password: string): Promise<void> {
   }).catch(() => {
     throw fail(new ServiceError('offline'))
   })
+  if (broken(response)) throw await unavailable(response)
   if (!response.ok) throw new Error(response.status === 429 ? 'Too many attempts. Wait a minute and try again.' : await problemMessage(response))
   adopt(await response.json())
 }
@@ -247,6 +291,14 @@ export const api = {
   createClient: (input: ClientInput) => call<Client>('/clients', 'POST', input),
   updateClient: (id: number, input: ClientInput) => call<Client>(`/clients/${id}`, 'PUT', input),
   setClientStatus: (id: number, status: ClientStatus) => call<Client>(`/clients/${id}/status`, 'PUT', { status }),
+
+  orders: () => call<Order[]>('/orders'),
+  order: (id: number) => call<Order>(`/orders/${id}`),
+  orderEvents: (id: number) => call<OrderEvent[]>(`/orders/${id}/events`),
+  placeOrder: (input: { clientId?: number; catalogId: number; quantity: number; dueDate?: string; reference?: string; notes?: string; priority: OrderPriority }) => call<Order>('/orders', 'POST', input),
+  adjustOrderQuote: (id: number, total: number, reason: string) => call<Order>(`/orders/${id}/quote`, 'POST', { total, reason }),
+  cancelOrder: (id: number, reason: string) => call<Order>(`/orders/${id}/cancel`, 'POST', { reason }),
+  requestOrderPriority: (id: number, priority: OrderPriority, reason?: string) => call<OrderEvent>(`/orders/${id}/priority-requests`, 'POST', { priority, reason }),
 
   jobTypes: () => call<JobType[]>('/job-types'),
   jobType: (id: number) => call<JobType>(`/job-types/${id}`),

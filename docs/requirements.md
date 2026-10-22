@@ -43,11 +43,11 @@ Never a false 200. Body is plain text. Anonymous. Feature: `Health.feature` (als
 
 **UC-004 Manage catalogs** (`Catalog.feature`): list, view, create, update (replaces the ordered job type sequence), clone and
 soft-deactivate catalogs. A catalog referenced by any order cannot be edited or deactivated (409; clone it instead); cloning is
-always allowed. Job types are seeded placeholders (read-only list only, UC-007); Order is a stub (catalogId only). Reporting is deferred.
+always allowed. Job types are seeded placeholders (read-only list only, UC-007); Reporting is deferred.
 
 **UC-005 Manage clients** (`Client.feature`): list, view, create, update and set the account status (Active, PaymentPending,
 Suspended, Inactive) of external clients; tier (Normal, Gold, Platinum) sets the stored discount (placeholder 0/5/10, pending
-owner values). Email is unique. Deferred until orders exist: blocking orders for Suspended clients, speedups, CSV export,
+owner values). Email is unique. A client may be linked to one login (`userId`, a Client-role user). Suspended or inactive clients cannot place orders (UC-008). Deferred: speedups, CSV export,
 print documents, client-only views.
 
 **UC-006 Approval chains** (`ApprovalChain.feature`): an ordered list of approving departments. A default chain always exists (seeded
@@ -61,6 +61,14 @@ itself (the department manager approves, then the assembly line picks the order 
 **UC-007 Manage job types** (`JobType.feature`): list, view, create, update, soft-deactivate job types (assembly-line steps) with optional
 labor cost, commission % and profit % overrides (null = use the catalog values), and list the catalogs using one. Name is unique.
 Admin or super admin change them; reads are open. Deferred: job type status, assignment and the completion notification (need orders).
+
+**UC-008 Orders, first pass** (`Order.feature`): place with quote, list, view, event history, adjust the quote, cancel and request a priority change. An order carries quantity (required), optional due date, reference and notes. At placement the quote is snapshotted: catalog base price x quantity, reduced by the catalog discount then the client tier discount (percentages stored on the order, rounded half away from zero to 2 decimals); labor cost, commission and profit are never exposed on orders. Estimation department managers (and admins) may override the quoted total with a reason while the order is PendingApproval, logged as QuoteAdjusted. An order
+references a client and an active catalog, starts `PendingApproval` with its stages copied from the catalog steps (enter/exit times
+empty until the approval flow), and every change appends to `order_event_history` (Placed, PriorityChangeRequested, Cancelled; never
+overwritten). Staff place for any client (`clientId`); a Client-role user always orders for their own linked client. Manager or above
+cancels (reason required; returns to the seeded Estimation department) or requests a priority change (event only, the priority
+stays). Client users see only their own orders and never event reasons. Deferred: approval flow and ED approval of priority changes,
+stage progression, assignment, notes and alerts, notifications, completion/earnings, manager scoping to their own department.
 
 **UC-001 Manage departments** (implemented; `Department.feature`): list, view, create, rename/describe and soft-deactivate
 departments; six system departments are seeded and protected from rename/deactivation. Failures: invalid input -> 400

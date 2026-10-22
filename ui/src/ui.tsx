@@ -108,6 +108,7 @@ const icons: Record<string, string> = {
   plus: 'M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z',
   search: 'M10 4a6 6 0 1 0 3.5 10.9l5 5 1.4-1.4-5-5A6 6 0 0 0 10 4zm0 2a4 4 0 1 1 0 8 4 4 0 0 1 0-8z',
   clients: 'M9 3h6v2h5v4H4V5h5zM4 11h16v9H4z',
+  orders: 'M6 2h9l5 5v15H6zm8 1.5V8h4.5zM9 12h8v2H9zm0 4h8v2H9z',
   catalogs: 'M4 4h16v4H4zm0 6h16v10H4zm5 2v2h6v-2z',
   chains: 'M3 3h7v7H3zm11 0h7v7h-7zM8.5 14h7v7h-7zM6 10h2v3h8v-3h2v5H6z',
   edit: 'M3 17.25V21h3.75L18.8 8.94l-3.75-3.75zM20.7 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z',
