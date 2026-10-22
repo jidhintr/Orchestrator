@@ -1,7 +1,7 @@
 @UC-007
 Feature: Job type management
 
-  Job types are the assembly-line steps that catalogs are built from. Admins and super admins change them; reading is open.
+  Job types are the assembly-line steps that catalogs are built from. Admins and super admins change them; reading needs a signed-in user.
 
   Background:
     Given a department "Press {unique}" with code "PRS{unique}" exists

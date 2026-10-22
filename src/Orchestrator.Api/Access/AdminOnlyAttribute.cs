@@ -12,7 +12,7 @@ public sealed class AdminOnlyAttribute : Attribute, IAsyncActionFilter, IOrdered
 
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        await context.HttpContext.RequestServices.GetRequiredService<ActingUser>()
+        await context.HttpContext.RequestServices.GetRequiredService<CurrentUser>()
             .RequireAsync(Rank.Admin, context.HttpContext.RequestAborted);
         await next();
     }

@@ -1,8 +1,9 @@
+using System.Security.Claims;
 using Orchestrator.Application.Access;
 
 namespace Orchestrator.Api.Access;
 
 public sealed class HttpCurrentUserId(IHttpContextAccessor http) : ICurrentUserId
 {
-    public string? Raw => http.HttpContext?.Request.Headers[ActingUser.Header].ToString();
+    public int? Id => int.TryParse(http.HttpContext?.User.FindFirstValue("sub"), out var id) ? id : null;
 }

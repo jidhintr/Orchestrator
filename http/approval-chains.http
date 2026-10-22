@@ -1,56 +1,72 @@
-### Approval chains API v1. Reads are anonymous; changes need an admin or super admin in the temporary X-Acting-User-Id header (1 = Super Admin).
+### Approval chains API v1. Every request needs the access token from the sign in request below.
 ### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
-### Seeded: chain 1 is the default; department ids 3 Accounts, 4 QA, 5 Delivery.
+
+### Sign in (put login and password in http/http-client.private.env.json, which is git-ignored)
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{login}}",
+  "password": "{{password}}"
+}
+
+### Seeded: chain 1 is the default; department ids 2 Administratives, 3 Accounting, 4 Quality Check.
 
 ### List chains (default first)
 GET {{baseUrl}}/api/v1/approval-chains
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Get the default chain
 GET {{baseUrl}}/api/v1/approval-chains/1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Edit the default chain: ordered approving departments
 PUT {{baseUrl}}/api/v1/approval-chains/1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
-X-Acting-User-Id: 1
 
 {
   "name": "Default",
   "description": "Company wide",
-  "departmentIds": [3, 4, 5]
+  "departmentIds": [3, 4, 2]
 }
 
 ### Which chain does catalog 1000 follow? (own chain, else the default)
 GET {{baseUrl}}/api/v1/approval-chains/for-catalog/1000
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Give catalog 1000 its own chain (409 if it already has one)
 # @name create
 POST {{baseUrl}}/api/v1/approval-chains
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
-X-Acting-User-Id: 1
 
 {
   "name": "Premium bags",
   "catalogId": 1000,
-  "departmentIds": [3, 4, 5]
+  "departmentIds": [3, 4, 2]
 }
 
 ### Delete the catalog chain (the catalog goes back to the default)
 DELETE {{baseUrl}}/api/v1/approval-chains/{{create.response.body.$.id}}
-X-Acting-User-Id: 1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 
 ### The default chain cannot be deleted (409)
 DELETE {{baseUrl}}/api/v1/approval-chains/1
-X-Acting-User-Id: 1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 
 ### Without an acting user changes return 401
 PUT {{baseUrl}}/api/v1/approval-chains/1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "name": "Default", "departmentIds": [4] }
 
 ### Unknown id returns 404
 GET {{baseUrl}}/api/v1/approval-chains/999999
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json

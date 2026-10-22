@@ -39,7 +39,7 @@ public class PipelineTests(ApiFixture api)
     [Fact]
     public async Task Errors_are_problem_json_with_trace_and_correlation_ids()
     {
-        var reply = await api.Send(HttpMethod.Get, "/api/v1/roles/" + ApiFixture.UnknownId, actor: null, correlationId: "abc-1");
+        var reply = await api.Send(HttpMethod.Get, "/api/v1/roles/" + ApiFixture.UnknownId, correlationId: "abc-1");
         ProblemAssert.Is(reply, HttpStatusCode.NotFound);
         Assert.Equal(404, reply["status"].GetInt32());
         Assert.Equal("Resource not found.", reply.Str("title"));
@@ -65,7 +65,7 @@ public class PipelineTests(ApiFixture api)
     [Fact]
     public async Task Database_outage_is_a_500_without_exception_text()
     {
-        var reply = await api.Send(HttpMethod.Get, "/api/v1/roles", actor: null, brokenDb: true);
+        var reply = await api.Send(HttpMethod.Get, "/api/v1/roles", brokenDb: true);
         ProblemAssert.Is(reply, HttpStatusCode.InternalServerError);
         Assert.Equal("An unexpected error occurred.", reply.Str("title"));
         Assert.DoesNotContain("Host=", reply.Raw, StringComparison.Ordinal);
@@ -75,8 +75,8 @@ public class PipelineTests(ApiFixture api)
     [Fact]
     public async Task Routes_without_a_supported_api_version_are_404()
     {
-        Assert.Equal(HttpStatusCode.NotFound, (await api.Send(HttpMethod.Get, "/api/roles", actor: null)).Status);
-        Assert.Equal(HttpStatusCode.NotFound, (await api.Send(HttpMethod.Get, "/api/v9/roles", actor: null)).Status);
+        Assert.Equal(HttpStatusCode.NotFound, (await api.Send(HttpMethod.Get, "/api/roles")).Status);
+        Assert.Equal(HttpStatusCode.NotFound, (await api.Send(HttpMethod.Get, "/api/v9/roles")).Status);
     }
 
     [Fact]
@@ -100,10 +100,11 @@ public class PipelineTests(ApiFixture api)
     }
 
     [Fact]
-    public async Task Reads_are_anonymous()
+    public async Task Reads_need_a_signed_in_user()
     {
         foreach (var path in new[] { "roles", "departments", "users", "job-types", "catalogs", "clients", "approval-chains" })
         {
+            ProblemAssert.Is(await api.Get(path, null), HttpStatusCode.Unauthorized);
             Assert.Equal(HttpStatusCode.OK, (await api.Get(path)).Status);
         }
     }

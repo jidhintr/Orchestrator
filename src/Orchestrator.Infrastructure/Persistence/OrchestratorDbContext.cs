@@ -9,6 +9,7 @@ namespace Orchestrator.Infrastructure.Persistence;
 public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext> options) : DbContext(options), IAppDbContext
 {
     public const string Schema = "biz";
+    public const string IdentitySchema = "identity";
     public const string CaseInsensitive = "case_insensitive";
     public const int FirstGeneratedId = 1000;
 
@@ -31,6 +32,10 @@ public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext
     public DbSet<ApprovalChain> ApprovalChains => Set<ApprovalChain>();
 
     public DbSet<ApprovalChainStage> ApprovalChainStages => Set<ApprovalChainStage>();
+
+    public DbSet<UserCredential> Credentials => Set<UserCredential>();
+
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

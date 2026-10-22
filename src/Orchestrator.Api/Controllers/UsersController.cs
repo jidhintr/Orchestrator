@@ -1,5 +1,6 @@
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
+using Orchestrator.Application.Auth;
 using Orchestrator.Application.Roles;
 using Orchestrator.Application.Users;
 
@@ -28,7 +29,7 @@ public sealed class UsersController(UserService users) : ControllerBase
 
     [HttpPost]
     [EndpointSummary("Create a user")]
-    [EndpointDescription("Needs the X-Acting-User-Id header (temporary, until authentication) of a manager, admin or super admin. Without departmentIds the user joins the Unassigned department, or the manager's own departments when a manager creates them. Managers may only use their own departments and roles of those departments; admins cannot create admins or super admins. 400 for an unknown department or role; 409 when the email is already used.")]
+    [EndpointDescription("For a manager, admin or super admin. An optional password (10 to 128 characters) lets the user sign in with their mobile or email. Without departmentIds the user joins the Unassigned department, or the manager's own departments when a manager creates them. Managers may only use their own departments and roles of those departments; admins cannot create admins or super admins. 400 for an unknown department or role; 409 when the email is already used.")]
     [ProducesResponseType<UserResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -42,7 +43,7 @@ public sealed class UsersController(UserService users) : ControllerBase
 
     [HttpPut("{id:int}")]
     [EndpointSummary("Update a user's profile")]
-    [EndpointDescription("Name, email, mobile and isActive (false deactivates). Needs X-Acting-User-Id; nobody can edit a user at or above their own rank, and managers only users in their own departments. 409 when the email is already used.")]
+    [EndpointDescription("Name, email, mobile and isActive (false deactivates and ends their sessions). Nobody can edit a user at or above their own rank, and managers only users in their own departments. 409 when the email is already used.")]
     [ProducesResponseType<UserResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -73,4 +74,18 @@ public sealed class UsersController(UserService users) : ControllerBase
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<UserResponse> AssignRoles(int id, AssignRolesRequest request, CancellationToken cancellationToken) =>
         await users.AssignRolesAsync(id, request, cancellationToken);
+
+    [HttpPut("{id:int}/password")]
+    [EndpointSummary("Set or reset a user's password")]
+    [EndpointDescription("Gives the user a sign-in password (10 to 128 characters) or replaces theirs, and ends their sessions. Same rights as editing the user: nobody can change a user at or above their own rank, managers only users in their own departments. Use change-password to change your own.")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<NoContentResult> SetPassword(int id, SetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        await users.SetPasswordAsync(id, request, cancellationToken);
+        return NoContent();
+    }
 }

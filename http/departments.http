@@ -1,14 +1,25 @@
-### Departments API v1. Reads are anonymous; changes send X-Acting-User-Id (temporary stand-in for authentication; 1 = seeded super admin, 2 = seeded admin).
+### Departments API v1. Every request needs the access token from the sign in request below.
 ### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### Sign in (put login and password in http/http-client.private.env.json, which is git-ignored)
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{login}}",
+  "password": "{{password}}"
+}
 
 ### List all departments
 GET {{baseUrl}}/api/v1/departments
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Create a department
 # @name create
 POST {{baseUrl}}/api/v1/departments
-X-Acting-User-Id: 1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -19,11 +30,12 @@ Content-Type: application/json
 
 ### Get the department created above
 GET {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Update name and description (code is immutable)
 PUT {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}
-X-Acting-User-Id: 1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -33,14 +45,15 @@ Content-Type: application/json
 
 ### Deactivate the department (soft delete)
 POST {{baseUrl}}/api/v1/departments/{{create.response.body.$.id}}/deactivate
-X-Acting-User-Id: 1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 
 ### List the roles of department 2 (Admin)
 GET {{baseUrl}}/api/v1/departments/2/roles
+Authorization: Bearer {{login.response.body.$.accessToken}}
 
 ### Assign roles to a department (replaces; its users inherit them)
 PUT {{baseUrl}}/api/v1/departments/2/roles
-X-Acting-User-Id: 1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -49,7 +62,7 @@ Content-Type: application/json
 
 ### Failure: department with an unknown role
 PUT {{baseUrl}}/api/v1/departments/2/roles
-X-Acting-User-Id: 1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -58,7 +71,7 @@ Content-Type: application/json
 
 ### Failure: invalid body
 POST {{baseUrl}}/api/v1/departments
-X-Acting-User-Id: 1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -68,6 +81,8 @@ Content-Type: application/json
 
 ### Failure: unknown department
 GET {{baseUrl}}/api/v1/departments/999999
+Authorization: Bearer {{login.response.body.$.accessToken}}
 
 ### Failure: unknown API version
 GET {{baseUrl}}/api/v2/departments
+Authorization: Bearer {{login.response.body.$.accessToken}}

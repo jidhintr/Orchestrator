@@ -65,12 +65,12 @@ Admin or super admin change them; reads are open. Deferred: job type status, ass
 **UC-001 Manage departments** (implemented; `Department.feature`): list, view, create, rename/describe and soft-deactivate
 departments; six system departments are seeded and protected from rename/deactivation. Failures: invalid input -> 400
 (nothing saved), duplicate name/code -> 409, unknown id -> 404, unexpected error -> standard 500 without internals.
-Changes are limited to admins and super admins (acting-user header, ADR-0003).
+Changes are limited to admins and super admins (signed in, ADR-0005).
 
 ## Open questions (ask the owner, do not guess)
 - Who may call each Department operation; should deactivation be blocked while a department has employees; reactivation?
 - Confirm assumed seed codes and that all six seeded rows are system rows (see decisions).
-- Authentication, Company/tenant model, SLOs (k6 thresholds are provisional), deployment target.
+- OTP/MFA and password-reset channel (SMS or WhatsApp), Company/tenant model, SLOs (k6 thresholds are provisional), deployment target.
 - Order, catalog, job-step models, earnings formula, notification channel.
 
 ## Deferred cross-module scenarios (write when Employee and Role modules exist; no placeholders before)

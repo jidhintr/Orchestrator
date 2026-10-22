@@ -18,7 +18,7 @@ Do not invent use cases, thresholds or architecture. Record answers in `docs/req
 
 ## Structure
 Four projects, dependencies point inward: `Orchestrator.Domain` (entities, `BaseEntity`, `SystemIds`, `Rank`; no packages) <-
-`Orchestrator.Application` (a service + DTOs per resource, `IAppDbContext`, `ActingUser`, exceptions) <- `Orchestrator.Infrastructure`
+`Orchestrator.Application` (a service + DTOs per resource, `IAppDbContext`, `CurrentUser`, `AuthService`, exceptions) <- `Orchestrator.Infrastructure`
 (`DbContext`, EF config, seed, migrations, DI) ; `Orchestrator.Api` (controllers, middleware, error handler, OpenAPI) composes them.
 Also `tests/Orchestrator.Specs`; `http/`; `k6/`.
 Detailed code rules: `.claude/rules/coding-standards.md` (loads for `src/**/*.cs`).
@@ -36,7 +36,7 @@ placeholders `{unique}` and `{id}`. Scenarios come from the owner or documented 
 Cover failure paths. Never weaken, skip or delete a scenario to get green.
 
 ## Security
-Auth is undecided: reads are anonymous and say so; changes use the temporary `X-Acting-User-Id` header (ADR-0003), which is trusted, not secure, and replaced when auth lands. No secrets in git (`.env` ignored; connection string via
+Every endpoint needs a signed-in user (JWT, ADR-0005) except health/live/ready, sign in, refresh and logout; mark any new exception `[AllowAnonymous]` only with the owner's approval. Identity tables live in schema `identity`. Dev-phase gaps (seeded Super Admin, no OTP/MFA) are tracked in `docs/TODO-auth-end-of-dev.md`. No secrets in git (`.env` ignored; connection string via
 user-secrets or `ConnectionStrings__Orchestrator`). Validate server-side, no string-built SQL, no exception text in 500
 bodies, Scalar/OpenAPI Development-only. The repo creates no Postgres container: the API uses the existing one on host port 5432 (database `OrchStore`, schema `biz`); don't modify or remove that container.
 

@@ -1,3 +1,4 @@
+import { useAccess } from './access'
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, type Catalog, type JobType, type JobTypeInput } from './api'
 import { Chips, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, locked, useList, useRunner, useToast, Form, Submit } from './ui'
@@ -12,6 +13,7 @@ export function JobTypes() {
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('all')
   const [toast, notify] = useToast()
+  const canEdit = useAccess().can('jobTypes')
   const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = () => setPanel(null)
@@ -26,7 +28,7 @@ export function JobTypes() {
 
   return (
     <Page title="Job types" subtitle="The steps a catalog item goes through, and what each costs."
-      action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New job type</button>}>
+      action={canEdit ? <button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New job type</button> : null}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name or description"
         onClear={() => { setQuery(''); setStatus('all') }}>
@@ -45,14 +47,14 @@ export function JobTypes() {
                 <td data-label="Commission">{percent(j.commissionPercent)}</td>
                 <td data-label="Profit">{percent(j.profitPercent)}</td>
                 <td data-label="Status"><StatusBadges active={j.isActive} /></td>
-                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${j.name}`} onClick={() => setPanel({ mode: 'detail', id: j.id, edit: true })}><Icon name="edit" />Edit</button></td>
+                <td data-label="" className="row-actions">{canEdit && <button className="secondary small" aria-label={`Edit ${j.name}`} onClick={() => setPanel({ mode: 'detail', id: j.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New job type" onClose={close}><CreateForm onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit job type' : 'Job type'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit job type' : 'Job type'} readOnly={!panel.edit} onEdit={canEdit ? () => setPanel({ ...panel, edit: true }) : undefined} changeKey={panel.id} onClose={close}><Detail id={panel.id} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )

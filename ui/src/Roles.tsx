@@ -1,3 +1,4 @@
+import { useAccess } from './access'
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, type Role, type User } from './api'
 import { Avatar, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, locked, useList, useRunner, useToast, Form, Submit } from './ui'
@@ -11,6 +12,7 @@ export function Roles() {
   const [status, setStatus] = useState('all')
   const [type, setType] = useState('all')
   const [toast, notify] = useToast()
+  const canEdit = useAccess().can('roles')
   const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = () => setPanel(null)
@@ -28,7 +30,7 @@ export function Roles() {
 
   return (
     <Page title="Roles" subtitle="What people may do. Assigned to departments and users."
-      action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New role</button>}>
+      action={canEdit ? <button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New role</button> : null}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name or description"
         onClear={() => { setQuery(''); setStatus('all'); setType('all') }}>
@@ -46,14 +48,14 @@ export function Roles() {
                 <td data-label="Name"><button className="link" onClick={() => open({ mode: 'detail', id: r.id })}>{r.name}</button></td>
                 <td data-label="Description" className={r.description ? undefined : 'none'}>{r.description}</td>
                 <td data-label="Status"><StatusBadges active={r.isActive} system={r.isSystem} activeLabel="Enabled" inactiveLabel="Disabled" /></td>
-                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${r.name}`} onClick={() => setPanel({ mode: 'detail', id: r.id, edit: true })}><Icon name="edit" />Edit</button></td>
+                <td data-label="" className="row-actions">{canEdit && <button className="secondary small" aria-label={`Edit ${r.name}`} onClick={() => setPanel({ mode: 'detail', id: r.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New role" onClose={close}><CreateForm onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit role' : 'Role'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit role' : 'Role'} readOnly={!panel.edit} onEdit={canEdit ? () => setPanel({ ...panel, edit: true }) : undefined} changeKey={panel.id} onClose={close}><Detail id={panel.id} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )

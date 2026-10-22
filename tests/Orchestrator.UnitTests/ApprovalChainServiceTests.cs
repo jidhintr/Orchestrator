@@ -7,9 +7,9 @@ namespace Orchestrator.UnitTests;
 
 public class ApprovalChainServiceTests
 {
-    private const int Accounts = 3;
+    private const int Accounting = 3;
     private const int Qa = 4;
-    private const int Delivery = 5;
+    private const int Administratives = 2;
 
     private readonly OrchestratorDbContext _db = TestDb.Create();
     private readonly ApprovalChainService _chains;
@@ -22,7 +22,7 @@ public class ApprovalChainServiceTests
     }
 
     private CreateApprovalChainRequest Create(string name = "Rush", params int[] departments) =>
-        new() { Name = name, CatalogId = _catalog.Id, DepartmentIds = departments.Length == 0 ? [Accounts, Qa] : departments };
+        new() { Name = name, CatalogId = _catalog.Id, DepartmentIds = departments.Length == 0 ? [Accounting, Qa] : departments };
 
     [Fact]
     public async Task List_returns_default_chain_first()
@@ -37,11 +37,11 @@ public class ApprovalChainServiceTests
     [Fact]
     public async Task Create_numbers_stages_in_given_order()
     {
-        var created = await _chains.CreateAsync(Create("  Rush  ", Delivery, Accounts), default);
+        var created = await _chains.CreateAsync(Create("  Rush  ", Administratives, Accounting), default);
         Assert.Equal("Rush", created.Name);
         Assert.Equal(_catalog.Id, created.CatalogId);
         Assert.False(created.IsDefault);
-        Assert.Equal([(1, "Delivery"), (2, "Accounts")], created.Stages.Select(s => (s.Sequence, s.DepartmentName)));
+        Assert.Equal([(1, "Administratives"), (2, "Accounting")], created.Stages.Select(s => (s.Sequence, s.DepartmentName)));
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class ApprovalChainServiceTests
 
     [Fact]
     public async Task Create_repeated_department_is_bad_request() =>
-        await Assert.ThrowsAsync<BadRequestException>(() => _chains.CreateAsync(Create("Rush", Accounts, Accounts), default));
+        await Assert.ThrowsAsync<BadRequestException>(() => _chains.CreateAsync(Create("Rush", Accounting, Accounting), default));
 
     [Fact]
     public async Task Create_unknown_department_is_bad_request() =>
@@ -91,16 +91,16 @@ public class ApprovalChainServiceTests
     {
         var created = await _chains.CreateAsync(Create(), default);
         var updated = await _chains.UpdateAsync(
-            created.Id, new UpdateApprovalChainRequest { Name = "Slow", Description = "Careful", DepartmentIds = [Delivery] }, default);
+            created.Id, new UpdateApprovalChainRequest { Name = "Slow", Description = "Careful", DepartmentIds = [Administratives] }, default);
         Assert.Equal("Slow", updated.Name);
         Assert.Equal("Careful", updated.Description);
-        Assert.Equal(["Delivery"], updated.Stages.Select(s => s.DepartmentName));
+        Assert.Equal(["Administratives"], updated.Stages.Select(s => s.DepartmentName));
     }
 
     [Fact]
     public async Task Update_default_chain_can_set_its_stages()
     {
-        var updated = await _chains.UpdateAsync(1, new UpdateApprovalChainRequest { Name = "Default", DepartmentIds = [Accounts, Qa, Delivery] }, default);
+        var updated = await _chains.UpdateAsync(1, new UpdateApprovalChainRequest { Name = "Default", DepartmentIds = [Accounting, Qa, Administratives] }, default);
         Assert.True(updated.IsDefault);
         Assert.Equal(3, updated.Stages.Count);
     }

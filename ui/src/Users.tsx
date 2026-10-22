@@ -1,3 +1,4 @@
+import { useAccess } from './access'
 import { type FormEvent, useCallback, useEffect, useState } from 'react'
 import { api, type Department, type Role, type User } from './api'
 import { Avatar, Chips, ChipPicker, Filters, Icon, matches, message, Modal, Page, Select, StatusBadges, toggled, locked, useList, useRunner, useToast, Form, sameSet, Submit } from './ui'
@@ -25,6 +26,7 @@ export function Users() {
   const [department, setDepartment] = useState('all')
   const [role, setRole] = useState('all')
   const [toast, notify] = useToast()
+  const canEdit = useAccess().can('users')
   const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = useCallback(() => setPanel(null), [])
@@ -43,7 +45,7 @@ export function Users() {
 
   return (
     <Page title="Users" subtitle="People, their departments and roles."
-      action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New user</button>}>
+      action={canEdit ? <button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New user</button> : null}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name, email or mobile"
         onClear={() => { setQuery(''); setStatus('all'); setDepartment('all'); setRole('all') }}>
@@ -64,14 +66,14 @@ export function Users() {
                 <td data-label="Departments"><Chips items={u.departments.map((d) => d.name)} /></td>
                 <td data-label="Roles"><Chips items={effectiveRoles(u)} /></td>
                 <td data-label="Status"><StatusBadges active={u.isActive} /></td>
-                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${fullName(u)}`} onClick={() => setPanel({ mode: 'detail', id: u.id, edit: true })}><Icon name="edit" />Edit</button></td>
+                <td data-label="" className="row-actions">{canEdit && <button className="secondary small" aria-label={`Edit ${fullName(u)}`} onClick={() => setPanel({ mode: 'detail', id: u.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New user" onClose={close}><CreateForm lookups={lookups} onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit user' : 'User'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} lookups={lookups} onChanged={() => void load()} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit user' : 'User'} readOnly={!panel.edit} onEdit={canEdit ? () => setPanel({ ...panel, edit: true }) : undefined} changeKey={panel.id} onClose={close}><Detail id={panel.id} lookups={lookups} onChanged={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )
@@ -106,8 +108,9 @@ function CreateForm({ lookups, onDone, onCancel }: { lookups: Lookups; onDone: (
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const input = contact(e.currentTarget)
+    const password = String(new FormData(e.currentTarget).get('password')) || undefined
     return run(async () => {
-      await api.createUser({ ...input, departmentIds: depts.size ? [...depts].map(Number) : undefined, roles: roles.size ? [...roles] : undefined })
+      await api.createUser({ ...input, password, departmentIds: depts.size ? [...depts].map(Number) : undefined, roles: roles.size ? [...roles] : undefined })
       onDone('User created.')
     })
   }
@@ -115,6 +118,7 @@ function CreateForm({ lookups, onDone, onCancel }: { lookups: Lookups; onDone: (
   return (
     <Form onSubmit={submit}>
       <ContactFields />
+      <label>Password (optional, lets them sign in)<input name="password" type="password" minLength={10} maxLength={128} autoComplete="new-password" /></label>
       <fieldset><legend>Departments (none = Unassigned)</legend>
         <ChipPicker options={departmentOptions(lookups)} selected={depts} onToggle={(k) => setDepts((s) => toggled(s, k))} />
       </fieldset>
@@ -131,6 +135,7 @@ function Detail({ id, lookups, onChanged, onClose }: { id: number; lookups: Look
   const [user, setUser] = useState<User | null>(null)
   const [depts, setDepts] = useState<Set<string>>(new Set())
   const [roles, setRoles] = useState<Set<string>>(new Set())
+  const [password, setPassword] = useState('')
   const { run, feedback, error, setError, busy } = useRunner()
 
   const apply = (u: User) => {
@@ -157,6 +162,10 @@ function Detail({ id, lookups, onChanged, onClose }: { id: number; lookups: Look
   }
 
   const saveDepartments = () => run(async () => apply(await api.assignUserDepartments(id, [...depts].map(Number))), 'Departments saved.')
+  const savePassword = () => run(async () => {
+    await api.setUserPassword(id, password)
+    setPassword('')
+  }, 'Password set. Their sessions were ended.')
   const saveRoles = () => run(async () => apply(await api.assignUserRoles(id, [...roles])), 'Roles saved.')
 
   if (!user) return error ? feedback : <p className="muted">Loading...</p>
@@ -177,6 +186,10 @@ function Detail({ id, lookups, onChanged, onClose }: { id: number; lookups: Look
       <fieldset><legend>Extra roles</legend>
         <ChipPicker options={roleOptions(lookups)} selected={roles} onToggle={(k) => setRoles((s) => toggled(s, k))} />
         <div className="actions"><button disabled={busy || sameSet(roles, new Set(user.roles))} onClick={saveRoles}>Save roles</button></div>
+      </fieldset>
+      <fieldset><legend>Password</legend>
+        <label>New password<input type="password" value={password} minLength={10} maxLength={128} autoComplete="new-password" onChange={(e) => setPassword(e.target.value)} /></label>
+        <div className="actions"><button disabled={busy || password.length < 10} onClick={savePassword}>Set password</button></div>
       </fieldset>
       {feedback}
       <div className="actions"><button className="secondary" onClick={onClose}>Close</button></div>

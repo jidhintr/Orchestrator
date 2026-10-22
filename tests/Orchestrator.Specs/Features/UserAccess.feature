@@ -1,7 +1,7 @@
 @UC-002
 Feature: Users, departments, roles and who may change whom
 
-  The acting user is named in the X-Acting-User-Id header (temporary, until authentication). Rank: Super Admin > Admin >
+  Users sign in with email or mobile and a password. Rank: Super Admin > Admin >
   Manager > Employee. Nobody edits a user at or above their own rank (a Super Admin may edit anyone); a Manager only
   works with users of their own departments. A user's roles are the roles of their departments plus their own extras.
 
@@ -19,7 +19,7 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Admin"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210" }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}" }
       """
     Then the response status is 201
     And the response JSON list "departments" has an item "Unassigned"
@@ -29,13 +29,36 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Admin"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210", "departmentIds": [{dept:PRS{unique}}, {dept:BND{unique}}] }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}", "departmentIds": [{dept:PRS{unique}}, {dept:BND{unique}}] }
       """
     Then the response status is 201
     And the response JSON list "departments" has an item "Press {unique}"
     And the response JSON list "departments" has an item "Bindery {unique}"
     And the response JSON list "departments" has no item "Unassigned"
     And the response JSON list "departmentRoles" has an item "Employee"
+
+  Scenario: A user in the Customers department cannot be in any other department
+    Given I act as "Admin"
+    When I send a PUT request to "/api/v1/users/{user:Cal}/departments" with body:
+      """
+      { "departmentIds": [{dept:CUSTOMERS}, {dept:BND{unique}}] }
+      """
+    Then the response is a problem with status 400
+    When I send a PUT request to "/api/v1/users/{user:Cal}/departments" with body:
+      """
+      { "departmentIds": [{dept:CUSTOMERS}] }
+      """
+    Then the response status is 200
+    And the response JSON list "departments" has an item "Customers"
+
+  Scenario: Unassigned is dropped when a user gets another department
+    Given I act as "Admin"
+    When I send a PUT request to "/api/v1/users/{user:Cal}/departments" with body:
+      """
+      { "departmentIds": [{dept:UNASSIGNED}, {dept:BND{unique}}] }
+      """
+    Then the response status is 200
+    And the response JSON list "departments" has no item "Unassigned"
 
   Scenario: Admin sets an employee's departments and gives them several extra roles
     Given a role "Estimator {unique}" exists
@@ -65,7 +88,7 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Cal"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210" }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}" }
       """
     Then the response status is 201
     And the response JSON list "departments" has an item "Press {unique}"
@@ -79,7 +102,7 @@ Feature: Users, departments, roles and who may change whom
     Then the response is a problem with status 403
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210", "roles": ["<role>"] }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}", "roles": ["<role>"] }
       """
     Then the response is a problem with status 403
 
@@ -92,12 +115,12 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Admin"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210", "departmentIds": [{dept:ADMIN}] }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}", "departmentIds": [{dept:ADMINISTRATIVES}] }
       """
     Then the response is a problem with status 403
     When I send a PUT request to "/api/v1/users/{user:Cal}/departments" with body:
       """
-      { "departmentIds": [{dept:ADMIN}] }
+      { "departmentIds": [{dept:ADMINISTRATIVES}] }
       """
     Then the response is a problem with status 403
 
@@ -105,13 +128,13 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "SA"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eve", "lastName": "Root", "mobile": "9876543210", "roles": ["Admin"] }
+      { "firstName": "Eve", "lastName": "Root", "mobile": "{mobile}", "roles": ["Admin"] }
       """
     Then the response status is 201
     And the response JSON list "roles" has an item "Admin"
     When I send a PUT request to "/api/v1/users/{id}" with body:
       """
-      { "firstName": "Eve", "lastName": "Rooter", "mobile": "9876543210", "isActive": true }
+      { "firstName": "Eve", "lastName": "Rooter", "mobile": "{mobile}", "isActive": true }
       """
     Then the response status is 200
     And the response JSON "lastName" is "Rooter"
@@ -120,7 +143,7 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Admin"
     When I send a PUT request to "/api/v1/users/<target>" with body:
       """
-      { "firstName": "Zed", "lastName": "Tester", "mobile": "9876543210", "isActive": true }
+      { "firstName": "Zed", "lastName": "Tester", "mobile": "{mobile}", "isActive": true }
       """
     Then the response is a problem with status 403
 
@@ -133,7 +156,7 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Ann"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210" }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}" }
       """
     Then the response status is 201
     And the response JSON list "departments" has an item "Press {unique}"
@@ -144,7 +167,7 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Ann"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210", "departmentIds": [{dept:BND{unique}}] }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}", "departmentIds": [{dept:BND{unique}}] }
       """
     Then the response is a problem with status 403
 
@@ -152,7 +175,7 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Ann"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210", "roles": ["<role>"] }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}", "roles": ["<role>"] }
       """
     Then the response is a problem with status 403
 
@@ -218,7 +241,7 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Ann"
     When I send a PUT request to "/api/v1/users/<target>" with body:
       """
-      { "firstName": "Zed", "lastName": "Tester", "mobile": "9876543210", "isActive": true }
+      { "firstName": "Zed", "lastName": "Tester", "mobile": "{mobile}", "isActive": true }
       """
     Then the response is a problem with status 403
 
@@ -241,7 +264,7 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Cal"
     When I send a PUT request to "/api/v1/users/<target>" with body:
       """
-      { "firstName": "Zed", "lastName": "Tester", "mobile": "9876543210", "isActive": true }
+      { "firstName": "Zed", "lastName": "Tester", "mobile": "{mobile}", "isActive": true }
       """
     Then the response is a problem with status 403
     When I send a PUT request to "/api/v1/users/<target>/roles" with body:
@@ -262,19 +285,19 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Cal"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210" }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}" }
       """
     Then the response is a problem with status 403
 
-  Scenario: Users of the Clients department inherit the Client role and can change nobody
-    Given a user "Cli" exists in the departments "CLIENTS" with the roles ""
+  Scenario: Users of the Customers department inherit the Client role and can change nobody
+    Given a user "Cli" exists in the departments "CUSTOMERS" with the roles ""
     When I send a GET request to "/api/v1/users/{user:Cli}"
     Then the response JSON list "departmentRoles" has an item "Client"
     And the response JSON list "roles" has no item "Client"
     Given I act as "Cli"
     When I send a PUT request to "/api/v1/users/{user:Cal}" with body:
       """
-      { "firstName": "Zed", "lastName": "Tester", "mobile": "9876543210", "isActive": true }
+      { "firstName": "Zed", "lastName": "Tester", "mobile": "{mobile}", "isActive": true }
       """
     Then the response is a problem with status 403
 
@@ -282,7 +305,7 @@ Feature: Users, departments, roles and who may change whom
     Given <actor>
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210" }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}" }
       """
     Then the response is a problem with status 401
 
@@ -296,13 +319,13 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "SA"
     When I send a PUT request to "/api/v1/users/{user:Ann}" with body:
       """
-      { "firstName": "Ann", "lastName": "Tester", "mobile": "9876543210", "isActive": false }
+      { "firstName": "Ann", "lastName": "Tester", "mobile": "{mobile}", "isActive": false }
       """
     Then the response status is 200
     Given I act as "Ann"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210" }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}" }
       """
     Then the response is a problem with status 401
 
@@ -338,17 +361,17 @@ Feature: Users, departments, roles and who may change whom
     Given I act as "Admin"
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Nash", "mobile": "9876543210", "email": "eli.{unique}@example.com" }
+      { "firstName": "Eli", "lastName": "Nash", "mobile": "{mobile}", "email": "eli.{unique}@example.com" }
       """
     Then the response status is 201
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Two", "mobile": "9876543210", "email": "ELI.{unique}@example.com" }
+      { "firstName": "Eli", "lastName": "Two", "mobile": "{mobile}", "email": "ELI.{unique}@example.com" }
       """
     Then the response is a problem with status 409
     When I send a POST request to "/api/v1/users" with body:
       """
-      { "firstName": "Eli", "lastName": "Three", "mobile": "9876543210" }
+      { "firstName": "Eli", "lastName": "Three", "mobile": "{mobile}" }
       """
     Then the response status is 201
 

@@ -17,17 +17,20 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Email).HasMaxLength(254).UseCollation(OrchestratorDbContext.CaseInsensitive);
         builder.Property(u => u.Mobile).HasMaxLength(20);
         builder.HasIndex(u => u.Email).IsUnique();
+        builder.HasIndex(u => u.Mobile).IsUnique();
 
-        // Placeholder identities pending owner confirmation; ids stay below FirstGeneratedId.
-        builder.HasData(
-            Seed(1, "Super", "Admin", "superadmin@orchestrator.local"),
-            Seed(2, "Admin", "User", "admin@orchestrator.local"));
+        // Dev-phase Super Admin only, removed at the end of dev (docs/TODO-auth-end-of-dev.md); ids stay below FirstGeneratedId.
+        builder.HasData(Seed(1, "Super", "Admin", "superadmin@orchestrator.local"));
 
-        builder.HasMany(u => u.Roles).WithMany(r => r.Users).UsingEntity(j => j.ToTable("user_roles"));
+        builder.HasMany(u => u.Roles).WithMany(r => r.Users).UsingEntity(j =>
+        {
+            j.ToTable("user_roles");
+            j.HasData(new { UsersId = SystemIds.SuperAdminUser, RolesId = SystemIds.SuperAdminRole });
+        });
         builder.HasMany(u => u.Departments).WithMany(d => d.Users).UsingEntity(j =>
         {
             j.ToTable("user_departments");
-            j.HasData(new { UsersId = 1, DepartmentsId = 1 }, new { UsersId = 2, DepartmentsId = 2 });
+            j.HasData(new { UsersId = SystemIds.SuperAdminUser, DepartmentsId = SystemIds.AdministrativesDepartment });
         });
     }
 

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { ACTING_USER_ID, api, onServiceError, type ServiceError, type User } from './api'
+import { useEffect, useMemo, useState } from 'react'
+import { AccessContext, makeAccess, rankLabel } from './access'
+import { api, currentUserId, onServiceError, onSignedOut, restoreSession, signOut, type ServiceError, type User } from './api'
 import { Catalogs } from './Catalogs'
 import { Chains } from './Chains'
 import { Clients } from './Clients'
@@ -7,6 +8,7 @@ import { Dashboard } from './Dashboard'
 import { Departments } from './Departments'
 import { ErrorPage } from './ErrorPage'
 import { JobTypes } from './JobTypes'
+import { Login } from './Login'
 import { Profile } from './Profile'
 import { Roles } from './Roles'
 import { Users } from './Users'
@@ -33,6 +35,18 @@ const groups: { title: string; routes: Route[] }[] = [
   { title: 'People', routes: ['departments', 'users', 'roles'] },
 ]
 
+const NEXT = 'next'
+const remember = (hash: string) => {
+  try { sessionStorage.setItem(NEXT, hash) } catch { /* private mode: sign in lands on the dashboard */ }
+}
+const recall = () => {
+  try {
+    const hash = sessionStorage.getItem(NEXT)
+    sessionStorage.removeItem(NEXT)
+    return hash
+  } catch { return null }
+}
+
 const current = (): Route => {
   const name = location.hash.replace(/^#\//, '')
   return name in pages ? (name as Route) : 'dashboard'
@@ -43,6 +57,7 @@ export function App() {
   const [me, setMe] = useState<User | null>(null)
   const [down, setDown] = useState<ServiceError | null>(null)
   const [attempt, setAttempt] = useState(0)
+  const [session, setSession] = useState<'loading' | 'in' | 'out'>('loading')
 
   useEffect(() => {
     const onChange = () => setRoute(current())
@@ -62,17 +77,34 @@ export function App() {
 
   useEffect(() => {
     onServiceError(setDown)
+    onSignedOut(() => {
+      setMe(null)
+      setSession('out')
+    })
+    void restoreSession().then((ok) => setSession(ok ? 'in' : 'out'))
   }, [])
 
   useEffect(() => {
-    api.user(Number(ACTING_USER_ID)).then(setMe).catch(() => undefined)
-  }, [attempt])
+    if (session !== 'out') return
+    if (location.hash && location.hash !== '#/login') remember(location.hash)
+    location.hash = '#/login'
+  }, [session])
 
-  const name = me ? `${me.firstName} ${me.lastName}` : 'Profile'
+  useEffect(() => {
+    const id = currentUserId()
+    if (session === 'in' && id !== null) api.user(id).then(setMe).catch(() => void signOut())
+  }, [attempt, session])
 
+  const access = useMemo(() => (me ? makeAccess(me) : null), [me])
+  const name = me ? `${me.firstName} ${me.lastName}` : ''
+
+  if (session === 'loading') return null
+  if (session === 'out') return <Login onDone={() => { location.hash = recall() ?? '#/dashboard'; setSession('in') }} />
   if (down) return <ErrorPage kind={down.kind} reference={down.reference} onRetry={() => { setDown(null); setAttempt((a) => a + 1) }} />
+  if (!access) return null
 
   return (
+    <AccessContext value={access}>
     <div className="shell" key={attempt}>
       <nav aria-label="Main">
         <a className="brand" href="#/dashboard">
@@ -97,10 +129,12 @@ export function App() {
         </div>
         <a className="me" href="#/profile" aria-label="Your profile" aria-current={route === 'profile' ? 'page' : undefined}>
           <Avatar name={name} />
-          <span className="stack"><strong>{name}</strong><small>Dev mode, no login</small></span>
+          <span className="stack"><strong>{name}</strong><small>{rankLabel(access.rank)}</small></span>
         </a>
+        <button className="secondary small sign-out" onClick={() => void signOut()}>Sign out</button>
       </nav>
       <main key={route}>{pages[route].view}</main>
     </div>
+    </AccessContext>
   )
 }

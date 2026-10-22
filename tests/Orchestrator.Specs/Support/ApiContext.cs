@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Net;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -17,16 +19,22 @@ public sealed partial class ApiContext
 
     public string? ActingUserId { get; set; } = "1";
 
-    public Dictionary<string, string> Aliases { get; } = new(StringComparer.OrdinalIgnoreCase) { ["user:SA"] = "1", ["user:Admin"] = "2" };
+    public Dictionary<string, string> Aliases { get; } = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["user:SA"] = "1",
+        ["user:Admin"] = ApiHost.AdminId.ToString(CultureInfo.InvariantCulture),
+    };
+
+    private static long _mobile = Random.Shared.NextInt64(1_000_000_000, 8_000_000_000);
+
+    public static string NextMobile() => Interlocked.Increment(ref _mobile).ToString(CultureInfo.InvariantCulture);
 
     private static readonly Dictionary<string, string> SeedIds = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["dept:SUPER_ADMIN"] = "1",
-        ["dept:ADMIN"] = "2",
-        ["dept:ACCOUNTS"] = "3",
-        ["dept:QA"] = "4",
-        ["dept:DELIVERY"] = "5",
-        ["dept:CLIENTS"] = "6",
+        ["dept:ADMINISTRATIVES"] = "2",
+        ["dept:ACCOUNTING"] = "3",
+        ["dept:QUALITY_CHECK"] = "4",
+        ["dept:CUSTOMERS"] = "6",
         ["dept:UNASSIGNED"] = "7",
         ["role:Super Admin"] = "1",
         ["role:Admin"] = "2",
@@ -49,11 +57,14 @@ public sealed partial class ApiContext
 
     public string Expand(string text) =>
         Placeholder().Replace(
-            text.Replace("{unique}", Unique, StringComparison.Ordinal).Replace("{id}", LastId ?? "<no id captured>", StringComparison.Ordinal),
+            Mobile().Replace(text.Replace("{unique}", Unique, StringComparison.Ordinal).Replace("{id}", LastId ?? "<no id captured>", StringComparison.Ordinal), _ => NextMobile()),
             m => Aliases.TryGetValue(m.Groups[1].Value + ":" + m.Groups[2].Value, out var id) ? id : SeedIds.GetValueOrDefault(m.Groups[1].Value + ":" + m.Groups[2].Value, m.Value));
 
     [GeneratedRegex(@"{(dept|role|user|catalog):([^{}]+)}")]
     private static partial Regex Placeholder();
+
+    [GeneratedRegex("{mobile}")]
+    private static partial Regex Mobile();
 
     public Task SendAsync(string method, string path, string? body = null) => SendAsync(method, path, body, ActingUserId);
 
@@ -63,9 +74,9 @@ public sealed partial class ApiContext
     {
         using var client = ApiHost.CreateClient(UseBrokenDatabase);
         using var request = new HttpRequestMessage(new HttpMethod(method.ToUpperInvariant()), Expand(path));
-        if (actor is not null)
+        if (actor is not null && int.TryParse(Expand(actor), CultureInfo.InvariantCulture, out var actorId) && await ApiHost.TokenAsync(actorId) is { } token)
         {
-            request.Headers.Add("X-Acting-User-Id", Expand(actor));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         }
 
         if (CorrelationId is not null)

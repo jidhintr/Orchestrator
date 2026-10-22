@@ -6,7 +6,7 @@ using Orchestrator.Domain;
 
 namespace Orchestrator.Application.Departments;
 
-public sealed class DepartmentService(IAppDbContext db, RoleService roles, ActingUser acting)
+public sealed class DepartmentService(IAppDbContext db, RoleService roles, CurrentUser acting)
 {
     public async Task<IReadOnlyList<DepartmentResponse>> ListAsync(CancellationToken cancellationToken) =>
         [.. (await db.Departments.AsNoTracking().OrderBy(d => d.Name).ToListAsync(cancellationToken)).Select(DepartmentResponse.From)];

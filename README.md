@@ -32,7 +32,7 @@ CI (`.github/workflows/ci.yml`): format, build, tests, EF drift check, vulnerabl
 | Path | Purpose |
 |---|---|
 | `src/Orchestrator.Domain` | Entities, `BaseEntity`, `SystemIds`, `Rank` (no dependencies) |
-| `src/Orchestrator.Application` | A service and DTOs per resource, `IAppDbContext`, acting-user rules, exceptions |
+| `src/Orchestrator.Application` | A service and DTOs per resource, `IAppDbContext`, current-user rules, auth service, exceptions |
 | `src/Orchestrator.Infrastructure` | `DbContext`, EF configuration, seed, migrations, Postgres wiring |
 | `src/Orchestrator.Api` | Controllers, middleware, error handling, versioning, OpenAPI/Scalar |
 | `tests/Orchestrator.Specs` | Gherkin `Features/`, `StepDefinitions/`, `Support/ApiHost` (API + Postgres container) |
@@ -49,5 +49,10 @@ CI (`.github/workflows/ci.yml`): format, build, tests, EF drift check, vulnerabl
 
 `ui/` is a React + TypeScript PWA (Vite). Start the API (port 5176), then `cd ui; npm install; npm run dev`.
 Vite proxies `/api` to the API, so no CORS setup is needed. Screens: Departments, Users, Roles, Clients, Catalogs and Approvals (left nav on desktop, bottom tabs on phones), each with search and status/type/department/role filters.
-Filters run in the browser on the full list (the API has no pagination yet). Every request sends a hardcoded
-`X-Acting-User-Id: 1` (dev only, ADR-0003).
+Filters run in the browser on the full list (the API has no pagination yet). The UI opens on a sign-in page (email or mobile + password) and keeps the access token in memory; the refresh cookie restores the session after a reload.
+
+### Auth setup (user-secrets or environment variables, never committed)
+`dotnet user-secrets set Auth:JwtKey "<random string, 32+ characters>" --project src/Orchestrator.Api` (env: `Auth__JwtKey`).
+For your own dev login as the seeded Super Admin (`superadmin@orchestrator.local`) also set `Auth:DevSeedPassword` (10+ characters);
+it is applied in Development on first start. Sign in at `POST /api/v1/auth/login`; ADR-0005, TODO for the end of dev in `docs/TODO-auth-end-of-dev.md`.
+k6 needs `-e K6_LOGIN=... -e K6_PASSWORD=...`; `.http` files read `login` and `password` from the git-ignored `http/http-client.private.env.json`.

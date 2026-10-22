@@ -7,17 +7,17 @@ public class UsersTests(ApiFixture api)
         firstName = "Ann",
         lastName = "Lee",
         email = email ?? $"u{ApiFixture.Unique()}@test.local",
-        mobile = "+0123456789",
+        mobile = ApiFixture.Mobile(),
         departmentIds = departments,
         roles,
     };
 
-    private static object Profile(string? email = null, bool isActive = true) => new
+    private static object Profile(string? email = null, bool isActive = true, string? mobile = null) => new
     {
         firstName = "Changed",
         lastName = "Name",
         email = email ?? $"c{ApiFixture.Unique()}@test.local",
-        mobile = "0987654321",
+        mobile = mobile ?? ApiFixture.Mobile(),
         isActive,
     };
 
@@ -43,9 +43,9 @@ public class UsersTests(ApiFixture api)
         var reply = await api.Get("users/1");
         Assert.Equal(HttpStatusCode.OK, reply.Status);
         Assert.Equal("superadmin@orchestrator.local", reply.Str("email"));
-        Assert.Equal(["Super Admin"], reply["departments"].EnumerateArray().Select(d => d.GetProperty("name").GetString()));
-        Assert.Equal(["Super Admin"], reply["departmentRoles"].EnumerateArray().Select(d => d.GetString()));
-        Assert.Empty(reply["roles"].EnumerateArray());
+        Assert.Equal(["Administratives"], reply["departments"].EnumerateArray().Select(d => d.GetProperty("name").GetString()));
+        Assert.Equal(["Admin"], reply["departmentRoles"].EnumerateArray().Select(d => d.GetString()));
+        Assert.Equal(["Super Admin"], reply["roles"].EnumerateArray().Select(r => r.GetString()));
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class UsersTests(ApiFixture api)
     [Fact]
     public async Task Create_without_an_email_is_allowed()
     {
-        var reply = await api.Post("users", new { firstName = "No", lastName = "Mail", mobile = "0123456789" });
+        var reply = await api.Post("users", new { firstName = "No", lastName = "Mail", mobile = ApiFixture.Mobile() });
         Assert.Equal(HttpStatusCode.Created, reply.Status);
     }
 
@@ -162,16 +162,18 @@ public class UsersTests(ApiFixture api)
     public async Task Update_changes_the_profile()
     {
         var id = await api.NewEmployee();
-        var reply = await api.Put($"users/{id}", Profile("changed@test.local" + ApiFixture.Unique()[..0]));
+        var mobile = ApiFixture.Mobile();
+        var reply = await api.Put($"users/{id}", Profile(mobile: mobile));
         Assert.Equal(HttpStatusCode.OK, reply.Status);
         Assert.Equal("Changed", reply.Str("firstName"));
-        Assert.Equal("0987654321", reply.Str("mobile"));
+        Assert.Equal(mobile, reply.Str("mobile"));
     }
 
     [Fact]
     public async Task Update_with_is_active_false_deactivates_and_the_user_can_no_longer_act()
     {
         var id = await api.NewUser(roles: ["Manager"]);
+        await api.Get("roles", id);
         var reply = await api.Put($"users/{id}", Profile(isActive: false));
         Assert.False(reply["isActive"].GetBoolean());
         Assert.Equal(HttpStatusCode.Unauthorized, (await api.Post("users", Body(), id)).Status);
@@ -264,6 +266,14 @@ public class UsersTests(ApiFixture api)
 
         var cleared = await api.Put($"users/{id}/departments", new { departmentIds = Array.Empty<int>() });
         Assert.Equal(["Unassigned"], cleared["departments"].EnumerateArray().Select(d => d.GetProperty("name").GetString()));
+    }
+
+    [Fact]
+    public async Task Assign_departments_keeps_customers_exclusive()
+    {
+        var id = await api.NewEmployee();
+        var department = await api.NewDepartment();
+        ProblemAssert.Is(await api.Put($"users/{id}/departments", new { departmentIds = new[] { 6, department } }), HttpStatusCode.BadRequest);
     }
 
     [Fact]

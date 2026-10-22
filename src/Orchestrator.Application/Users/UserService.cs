@@ -1,13 +1,14 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using Orchestrator.Application.Access;
+using Orchestrator.Application.Auth;
 using Orchestrator.Application.Errors;
 using Orchestrator.Application.Roles;
 using Orchestrator.Domain;
 
 namespace Orchestrator.Application.Users;
 
-public sealed class UserService(IAppDbContext db, RoleService roles, ActingUser acting)
+public sealed class UserService(IAppDbContext db, RoleService roles, CurrentUser acting, AuthService auth)
 {
     internal static readonly Expression<Func<User, UserResponse>> Project = u => new(
         u.Id,
@@ -42,6 +43,11 @@ public sealed class UserService(IAppDbContext db, RoleService roles, ActingUser 
         await SetRolesAsync(user, actor, request.Roles ?? [], cancellationToken);
         EnsureOutranks(actor, user);
         db.Users.Add(user);
+        if (request.Password is not null)
+        {
+            db.Credentials.Add(new UserCredential { User = user, PasswordHash = PasswordHasher.Hash(request.Password), PasswordChangedAt = DateTime.UtcNow });
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         return await GetAsync(user.Id, cancellationToken);
     }
@@ -54,6 +60,11 @@ public sealed class UserService(IAppDbContext db, RoleService roles, ActingUser 
         user.Email = request.Email?.Trim();
         user.Mobile = request.Mobile;
         user.IsActive = request.IsActive;
+        if (!request.IsActive)
+        {
+            await auth.RevokeTokensAsync(id, cancellationToken);
+        }
+
         return await SaveAsync(actor, user, cancellationToken);
     }
 
@@ -69,6 +80,13 @@ public sealed class UserService(IAppDbContext db, RoleService roles, ActingUser 
         var (actor, user) = await LoadManagedAsync(id, cancellationToken);
         await SetDepartmentsAsync(user, actor, request.DepartmentIds, cancellationToken);
         return await SaveAsync(actor, user, cancellationToken);
+    }
+
+    public async Task SetPasswordAsync(int id, SetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        await LoadManagedAsync(id, cancellationToken);
+        await auth.SetPasswordAsync(id, request.Password, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<UserResponse> SaveAsync(Actor actor, User user, CancellationToken cancellationToken)
@@ -100,6 +118,11 @@ public sealed class UserService(IAppDbContext db, RoleService roles, ActingUser 
         if (ids.Count == 0)
         {
             ids.Add(SystemIds.UnassignedDepartment);
+        }
+
+        if (ids.Count > 1 && ids.Contains(SystemIds.CustomersDepartment))
+        {
+            throw new BadRequestException("A user in the Customers department cannot be in any other department.");
         }
 
         var found = await db.Departments.Include(d => d.Roles).Where(d => d.IsActive && ids.Contains(d.Id)).ToListAsync(cancellationToken);

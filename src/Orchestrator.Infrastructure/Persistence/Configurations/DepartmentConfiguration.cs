@@ -20,18 +20,16 @@ internal sealed class DepartmentConfiguration : IEntityTypeConfiguration<Departm
 
         // Seed ids stay below FirstGeneratedId so generated ids never collide with them. Names and codes are placeholders pending owner confirmation.
         builder.HasData(
-            Seed(1, "Super Admin", "SUPER_ADMIN"),
-            Seed(2, "Admin", "ADMIN"),
-            Seed(3, "Accounts", "ACCOUNTS"),
-            Seed(4, "QA", "QA"),
-            Seed(5, "Delivery", "DELIVERY"),
-            Seed(6, "Clients", "CLIENTS"),
+            Seed(2, "Administratives", "ADMINISTRATIVES"),
+            Seed(3, "Accounting", "ACCOUNTING"),
+            Seed(4, "Quality Check", "QUALITY_CHECK"),
+            Seed(6, "Customers", "CUSTOMERS"),
             Seed(7, "Unassigned", "UNASSIGNED"));
 
         builder.HasMany(d => d.Roles).WithMany(r => r.Departments).UsingEntity(j =>
         {
             j.ToTable("department_roles");
-            j.HasData(new { DepartmentsId = 1, RolesId = 1 }, new { DepartmentsId = 2, RolesId = 2 }, new { DepartmentsId = 6, RolesId = 5 });
+            j.HasData(new { DepartmentsId = 2, RolesId = 2 }, new { DepartmentsId = 6, RolesId = 5 });
         });
     }
 

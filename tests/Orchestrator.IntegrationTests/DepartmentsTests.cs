@@ -6,11 +6,11 @@ public class DepartmentsTests(ApiFixture api)
         new { name = name ?? "Dept " + ApiFixture.Unique(), code = code ?? "D" + ApiFixture.Unique().ToUpperInvariant(), description = "Does things" };
 
     [Fact]
-    public async Task List_contains_the_seven_system_departments()
+    public async Task List_contains_the_five_system_departments()
     {
         var reply = await api.Get("departments");
         Assert.Equal(HttpStatusCode.OK, reply.Status);
-        foreach (var name in new[] { "Super Admin", "Admin", "Accounts", "QA", "Delivery", "Clients", "Unassigned" })
+        foreach (var name in new[] { "Administratives", "Accounting", "Quality Check", "Customers", "Unassigned" })
         {
             Assert.Contains(name, reply.Names());
         }
@@ -22,7 +22,7 @@ public class DepartmentsTests(ApiFixture api)
     public async Task Get_returns_a_department()
     {
         var reply = await api.Get("departments/4");
-        Assert.Equal("QA", reply.Str("code"));
+        Assert.Equal("QUALITY_CHECK", reply.Str("code"));
         Assert.True(reply["isSystem"].GetBoolean());
     }
 

@@ -154,7 +154,7 @@ public class RolesTests(ApiFixture api)
         var name = "Off" + ApiFixture.Unique();
         var id = await api.NewRole(name);
         await api.Post($"roles/{id}/disable");
-        var reply = await api.Post("users", new { firstName = "Ann", lastName = "Lee", mobile = "0123456789", roles = new[] { name } });
+        var reply = await api.Post("users", new { firstName = "Ann", lastName = "Lee", mobile = ApiFixture.Mobile(), roles = new[] { name } });
         ProblemAssert.Is(reply, HttpStatusCode.BadRequest);
     }
 

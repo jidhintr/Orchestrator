@@ -30,8 +30,10 @@ Add a short section for each significant choice (context, decision, alternatives
 ## ADR-0003: Users, departments, roles and who may change whom (2026-10-21, owner)
 - **Model:** a user belongs to one or more departments (`user_departments`); a department carries roles (`department_roles`);
   a user may also hold extra roles (`user_roles`). Effective roles = department roles + the user's own. Users with no
-  department sit in the seeded system department **Unassigned** (id 7). Seeded roles (ids 1-5): Super Admin, Admin,
-  Manager, Employee, Client; the Clients department carries Client. Only the Super Admin and Admin users/departments
+  department sit in the seeded system department **Unassigned** (id 7), and leave it when given another. Seeded departments:
+  Administratives, Accounting, Quality Check, Customers, Unassigned. Customers (external) is exclusive: no other department.
+  Seeded roles (ids 1-5): Super Admin, Admin,
+  Manager, Employee, Client; the Customers department carries Client, Administratives carries Admin. Only the seeded Super Admin user (direct role) and Administratives
   are seeded with roles. Fixed ids live in `SystemIds`.
 - **Rank** (from effective roles): Super Admin 4 > Admin 3 > Manager 2 > Employee/Client/custom 1. Nobody changes a user
   at or above their own rank (a Super Admin may change anyone), and nobody can give a role or department that would lift a
@@ -42,10 +44,8 @@ Add a short section for each significant choice (context, decision, alternatives
   Replacing departments or roles only touches what the manager may assign; the user keeps the rest. Unassigning leaves
   the user in Unassigned (or their other departments), after which the manager can no longer manage them.
 - **Admin-only:** creating, changing, disabling and deleting roles and departments, and setting a department's roles.
-  Rights are checked before request validation (`[AdminOnly]`). Reads are open.
-- **Acting user (temporary):** until authentication exists, the caller names itself in `X-Acting-User-Id`. Missing,
-  invalid, unknown or inactive -> 401; not allowed -> 403. The header is trusted, so this is NOT security; replace
-  `ActingUser` when auth is decided. Specs default to the seeded super admin (id 1) and switch with `I act as "<name>"`.
+  Rights are checked before request validation (`[AdminOnly]`). Reading needs a signed-in user (ADR-0005).
+- **Acting user:** superseded by ADR-0005 (real sign-in). Unknown or inactive -> 401; not allowed -> 403 still holds.
 - **Out of scope until phase 2:** orders, notes, completion and notifications; employee read-scoping (own profile only);
   client registration. Role endpoints beyond CRUD (e.g. approval chains, UI pages) are not modelled.
 - **Consequences:** `users.DepartmentId` was replaced by the join table (migration `UserDepartments` copies existing rows);
@@ -53,7 +53,7 @@ Add a short section for each significant choice (context, decision, alternatives
 
 ## ADR-0004: UI is React + Vite PWA (2026-10-21, owner)
 - **Decision:** React + TypeScript on Vite in `ui/`, installable as a PWA for phones; Capacitor can wrap it later. SignalR client for phase-3 notifications.
-- **Dev wiring:** Vite proxies `/api` to the API, so the API has no CORS configuration. The UI hardcodes `X-Acting-User-Id: 1` until auth lands.
+- **Dev wiring:** Vite proxies `/api` to the API, so the API has no CORS configuration. The UI signs in through `/api/v1/auth` (ADR-0005).
 - **Filtering:** client-side over the full list (no pagination in the API); move to query parameters when pagination lands.
 - **Rejected:** Angular (more ceremony for a CRUD back office), Flutter/React Native (second toolchain).
 
@@ -67,3 +67,12 @@ Add a short section for each significant choice (context, decision, alternatives
 - **Consequences:** Application still uses EF Core abstractions (`Include`, `ToListAsync`) but no provider; no repository layer.
   Domain enums carry a `System.Text.Json` converter attribute. Migrations keep their namespace; only the model snapshot's entity
   type names changed to `Orchestrator.Domain.*` (no schema change; `has-pending-model-changes` is clean).
+
+## ADR-0005: Password sign-in with JWT, everything behind auth (2026-10-22, owner)
+- **Decision:** users sign in with email or registered mobile plus a password. A manager, admin or super admin sets or resets a user's password (`PUT /users/{id}/password`, or `password` when creating); users change their own with `auth/change-password`. No OTP in the dev phase.
+- **Tokens:** JWT access token (15 min, HS256, key `Auth:JwtKey` from user-secrets/env) in the `Authorization: Bearer` header; rotating refresh token (7 days, hashed at rest, reuse revokes the session) in an httpOnly, Secure, SameSite=Strict cookie scoped to `/api/v1/auth`. The user is re-checked in the database on every request, so deactivation takes effect at once.
+- **Passwords:** PBKDF2-SHA256 (600k iterations), 10 to 128 characters, one generic "Invalid credentials" message, lockout for 15 minutes after 5 failures, sign in rate limited per address.
+- **Storage:** schema `identity` (`user_credentials`, `refresh_tokens`), linked to `biz.users` by FK. `users.Mobile` is unique because it is a login.
+- **Access:** every endpoint needs a token except `/api/health`, `/api/health/live`, `/api/health/ready`, sign in, refresh, logout (and Scalar/OpenAPI in Development). Rank rules (`CurrentUser`, `[AdminOnly]`) are unchanged.
+- **Dev phase:** only the seeded Super Admin exists; in Development its password comes from `Auth:DevSeedPassword`. Remove it, add OTP/MFA and the rest at the end of dev: see `docs/TODO-auth-end-of-dev.md`.
+- **Supersedes:** ADR-0003 acting-user header.

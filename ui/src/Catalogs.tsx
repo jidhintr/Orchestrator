@@ -1,3 +1,4 @@
+import { useAccess } from './access'
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, type ApprovalChain, type Catalog, type CatalogInput, type JobType } from './api'
 import { Badge, Timeline, Filters, Icon, matches, message, Modal, OrderedPicker, Page, Select, StatusBadges, locked, useList, useRunner, useToast, Form, Submit } from './ui'
@@ -23,6 +24,7 @@ export function Catalogs() {
   const [status, setStatus] = useState('all')
   const [jobType, setJobType] = useState('all')
   const [toast, notify] = useToast()
+  const canEdit = useAccess().can('catalogs')
   const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = () => setPanel(null)
@@ -40,7 +42,7 @@ export function Catalogs() {
 
   return (
     <Page title="Catalogs" subtitle="Products, pricing and the job steps each one goes through."
-      action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New catalog</button>}>
+      action={canEdit ? <button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New catalog</button> : null}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search SKU, name or description"
         onClear={() => { setQuery(''); setStatus('all'); setJobType('all') }}>
@@ -60,14 +62,14 @@ export function Catalogs() {
                 <td data-label="Base price">{money(c.basePrice)}</td>
                 <td data-label="Steps"><Timeline items={c.steps.map((s) => s.jobTypeName)} /></td>
                 <td data-label="Status"><StatusBadges active={c.isActive} /></td>
-                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${c.name}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button></td>
+                <td data-label="" className="row-actions">{canEdit && <button className="secondary small" aria-label={`Edit ${c.name}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New catalog" onClose={close}><CreateForm jobTypes={jobTypes} onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit catalog' : 'Catalog'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} jobTypes={jobTypes} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit catalog' : 'Catalog'} readOnly={!panel.edit} onEdit={canEdit ? () => setPanel({ ...panel, edit: true }) : undefined} changeKey={panel.id} onClose={close}><Detail id={panel.id} jobTypes={jobTypes} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )

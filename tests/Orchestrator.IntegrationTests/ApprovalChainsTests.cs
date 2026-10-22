@@ -2,12 +2,12 @@ namespace Orchestrator.IntegrationTests;
 
 public class ApprovalChainsTests(ApiFixture api)
 {
-    private const int Accounts = 3;
+    private const int Accounting = 3;
     private const int Qa = 4;
-    private const int Delivery = 5;
+    private const int Administratives = 2;
 
     private static object Body(int catalogId, params int[] departments) =>
-        new { name = "Chain " + ApiFixture.Unique(), description = "Review steps", catalogId, departmentIds = departments.Length > 0 ? departments : [Accounts, Qa] };
+        new { name = "Chain " + ApiFixture.Unique(), description = "Review steps", catalogId, departmentIds = departments.Length > 0 ? departments : [Accounting, Qa] };
 
     [Fact]
     public async Task List_starts_with_the_default_chain()
@@ -29,12 +29,12 @@ public class ApprovalChainsTests(ApiFixture api)
     public async Task Create_returns_201_with_numbered_stages()
     {
         var catalog = await api.NewCatalog();
-        var reply = await api.Post("approval-chains", Body(catalog, Delivery, Accounts));
+        var reply = await api.Post("approval-chains", Body(catalog, Administratives, Accounting));
         Assert.Equal(HttpStatusCode.Created, reply.Status);
         Assert.EndsWith($"/api/v1/approval-chains/{reply.Id}", reply.Header("Location"), StringComparison.Ordinal);
         Assert.False(reply["isDefault"].GetBoolean());
         Assert.Equal(catalog, reply["catalogId"].GetInt32());
-        Assert.Equal([(1, "Delivery"), (2, "Accounts")], reply["stages"].EnumerateArray().Select(s => (s.GetProperty("sequence").GetInt32(), s.GetProperty("departmentName").GetString())));
+        Assert.Equal([(1, "Administratives"), (2, "Accounting")], reply["stages"].EnumerateArray().Select(s => (s.GetProperty("sequence").GetInt32(), s.GetProperty("departmentName").GetString())));
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class ApprovalChainsTests(ApiFixture api)
     {
         ProblemAssert.Is(await api.Post("approval-chains", Body(ApiFixture.UnknownId)), HttpStatusCode.BadRequest);
         var catalog = await api.NewCatalog();
-        ProblemAssert.Is(await api.Post("approval-chains", Body(catalog, Accounts, Accounts)), HttpStatusCode.BadRequest);
+        ProblemAssert.Is(await api.Post("approval-chains", Body(catalog, Accounting, Accounting)), HttpStatusCode.BadRequest);
         ProblemAssert.Is(await api.Post("approval-chains", Body(catalog, ApiFixture.UnknownId)), HttpStatusCode.BadRequest);
     }
 
@@ -66,8 +66,8 @@ public class ApprovalChainsTests(ApiFixture api)
     public async Task Create_with_invalid_fields_is_400()
     {
         var catalog = await api.NewCatalog();
-        Assert.Equal(HttpStatusCode.BadRequest, (await api.Post("approval-chains", new { name = "A", catalogId = catalog, departmentIds = new[] { Accounts } })).Status);
-        Assert.Equal(HttpStatusCode.BadRequest, (await api.Post("approval-chains", new { name = "Valid", catalogId = 0, departmentIds = new[] { Accounts } })).Status);
+        Assert.Equal(HttpStatusCode.BadRequest, (await api.Post("approval-chains", new { name = "A", catalogId = catalog, departmentIds = new[] { Accounting } })).Status);
+        Assert.Equal(HttpStatusCode.BadRequest, (await api.Post("approval-chains", new { name = "Valid", catalogId = 0, departmentIds = new[] { Accounting } })).Status);
         Assert.Equal(HttpStatusCode.BadRequest, (await api.Post("approval-chains", new { name = "Valid", catalogId = catalog, departmentIds = Array.Empty<int>() })).Status);
     }
 
@@ -101,11 +101,11 @@ public class ApprovalChainsTests(ApiFixture api)
     public async Task Update_replaces_name_description_and_stages()
     {
         var chain = await api.Post("approval-chains", Body(await api.NewCatalog()));
-        var reply = await api.Put($"approval-chains/{chain.Id}", new { name = "Slow lane", description = "Careful", departmentIds = new[] { Delivery } });
+        var reply = await api.Put($"approval-chains/{chain.Id}", new { name = "Slow lane", description = "Careful", departmentIds = new[] { Administratives } });
         Assert.Equal(HttpStatusCode.OK, reply.Status);
         Assert.Equal("Slow lane", reply.Str("name"));
         Assert.Equal("Careful", reply.Str("description"));
-        Assert.Equal(["Delivery"], reply["stages"].EnumerateArray().Select(s => s.GetProperty("departmentName").GetString()));
+        Assert.Equal(["Administratives"], reply["stages"].EnumerateArray().Select(s => s.GetProperty("departmentName").GetString()));
     }
 
     [Fact]

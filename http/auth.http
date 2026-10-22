@@ -1,0 +1,74 @@
+### Auth API v1. Sign in with email or registered mobile; put login and password in http/http-client.private.env.json (git-ignored).
+### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### Sign in
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{login}}",
+  "password": "{{password}}"
+}
+
+### Get a new access token (uses the refresh cookie set by the sign in)
+POST {{baseUrl}}/api/v1/auth/refresh
+
+### Change your own password (ends every session; sign in again afterwards)
+POST {{baseUrl}}/api/v1/auth/change-password
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{password}}",
+  "newPassword": "a-new-password-123"
+}
+
+### Sign out (revokes the session behind the refresh cookie)
+POST {{baseUrl}}/api/v1/auth/logout
+
+### Failure: wrong password (401, same message as an unknown login)
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "superadmin@orchestrator.local",
+  "password": "12345678"
+}
+
+### Failure: unknown login (401)
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "nobody@example.test",
+  "password": "whatever-password"
+}
+
+### Failure: invalid body (400)
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "",
+  "password": ""
+}
+
+### Failure: change password with the wrong current password (400)
+POST {{baseUrl}}/api/v1/auth/change-password
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "currentPassword": "definitely-wrong",
+  "newPassword": "a-new-password-123"
+}
+
+### Failure: change password without a token (401)
+POST {{baseUrl}}/api/v1/auth/change-password
+Content-Type: application/json
+
+{
+  "currentPassword": "x",
+  "newPassword": "a-new-password-123"
+}

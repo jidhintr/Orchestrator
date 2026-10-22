@@ -25,5 +25,9 @@ public interface IAppDbContext
 
     DbSet<ApprovalChainStage> ApprovalChainStages { get; }
 
+    DbSet<UserCredential> Credentials { get; }
+
+    DbSet<RefreshToken> RefreshTokens { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

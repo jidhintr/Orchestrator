@@ -1,11 +1,13 @@
+import { useAccess } from './access'
 import { type FormEvent, useEffect, useState } from 'react'
-import { ACTING_USER_ID, api, type User } from './api'
+import { api, currentUserId, type User } from './api'
 import { Avatar, Chips, message, Page, StatusBadges, useRunner, Form, Submit } from './ui'
 
 export function Profile() {
   const [user, setUser] = useState<User | null>(null)
   const { run, feedback, error, setError } = useRunner()
-  const id = Number(ACTING_USER_ID)
+  const id = currentUserId() ?? 0
+  const canEditSelf = useAccess().rank === 4
 
   useEffect(() => {
     api.user(id).then(setUser).catch((e) => setError(message(e)))
@@ -39,6 +41,7 @@ export function Profile() {
         </div>
       </section>
       <div className="profile-grid">
+        <fieldset className="pane" disabled={!canEditSelf}>
         <Form className="panel" onSubmit={save} requireChange key={JSON.stringify(user)}>
           <h2>Contact details</h2>
           <div className="row">
@@ -50,14 +53,42 @@ export function Profile() {
           {feedback}
           <div className="actions"><Submit>Save changes</Submit></div>
         </Form>
+          {!canEditSelf && <p className="muted">Your contact details are changed by an admin.</p>}
+        </fieldset>
+        <PasswordForm />
         <section className="panel">
           <h2>Access</h2>
           <div className="stack"><span className="muted">Departments</span><Chips items={user.departments.map((d) => d.name)} empty="None" /></div>
           <div className="stack"><span className="muted">Roles from departments</span><Chips items={user.departmentRoles} empty="None" /></div>
           <div className="stack"><span className="muted">Extra roles</span><Chips items={user.roles} empty="None" /></div>
-          <p className="muted">Departments and roles are managed by an admin on the Users page. There is no sign-in yet, so this page shows the built-in dev account.</p>
+          <p className="muted">Departments and roles are managed by an admin on the Users page.</p>
         </section>
       </div>
     </Page>
+  )
+}
+
+function PasswordForm() {
+  const { run, feedback } = useRunner()
+
+  const submit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const d = new FormData(e.currentTarget)
+    return run(async () => {
+      if (d.get('next') !== d.get('confirm')) throw new Error('The new passwords do not match.')
+      await api.changePassword(String(d.get('current')), String(d.get('next')))
+    })
+  }
+
+  return (
+    <Form className="panel" onSubmit={submit}>
+      <h2>Change password</h2>
+      <label>Current password<input name="current" type="password" required maxLength={128} autoComplete="current-password" /></label>
+      <label>New password<input name="next" type="password" required minLength={10} maxLength={128} autoComplete="new-password" /></label>
+      <label>Repeat new password<input name="confirm" type="password" required minLength={10} maxLength={128} autoComplete="new-password" /></label>
+      <p className="muted">At least 10 characters. You will be signed out and sign in again with the new one.</p>
+      {feedback}
+      <div className="actions"><Submit>Change password</Submit></div>
+    </Form>
   )
 }

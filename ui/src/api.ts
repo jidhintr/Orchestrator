@@ -105,8 +105,40 @@ export interface UserInput {
   mobile: string
 }
 
-// shortcut: hardcoded dev stand-in for authentication (1 = seeded super admin); remove when auth lands (ADR-0003).
-export const ACTING_USER_ID = '1'
+let accessToken: string | null = null
+let userId: number | null = null
+let signedOut: () => void = () => undefined
+
+export const onSignedOut = (fn: () => void) => {
+  signedOut = fn
+}
+export const currentUserId = () => userId
+
+const adopt = (r: { accessToken: string; userId: number }) => {
+  accessToken = r.accessToken
+  userId = r.userId
+}
+
+const endSession = () => {
+  accessToken = null
+  userId = null
+  signedOut()
+}
+
+let refreshing: Promise<boolean> | null = null
+export function restoreSession(): Promise<boolean> {
+  refreshing ??= fetch('/api/v1/auth/refresh', { method: 'POST' })
+    .then(async (r) => {
+      if (!r.ok) return false
+      adopt(await r.json())
+      return true
+    })
+    .catch(() => false)
+    .finally(() => {
+      refreshing = null
+    })
+  return refreshing
+}
 
 export class ServiceError extends Error {
   constructor(readonly kind: 'offline' | 'server', readonly reference?: string) {
@@ -124,17 +156,22 @@ const fail = (e: ServiceError) => {
   return e
 }
 
-async function call<T>(path: string, method = 'GET', body?: unknown): Promise<T> {
+async function call<T>(path: string, method = 'GET', body?: unknown, retried = false): Promise<T> {
   const response = await fetch(`/api/v1${path}`, {
     method,
     headers: {
-      'X-Acting-User-Id': ACTING_USER_ID,
+      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   }).catch(() => {
     throw fail(new ServiceError('offline'))
   })
+  if (response.status === 401) {
+    if (!retried && (await restoreSession())) return call<T>(path, method, body, true)
+    endSession()
+    throw new Error('Your session has expired. Sign in again.')
+  }
   if (response.status >= 500) {
     const problem = response.headers.get('content-type')?.includes('json') ? await response.json().catch(() => null) : null
     throw fail(new ServiceError(problem ? 'server' : 'offline', typeof problem?.correlationId === 'string' ? problem.correlationId : undefined))
@@ -155,7 +192,30 @@ async function problemMessage(response: Response): Promise<string> {
   }
 }
 
+export async function signIn(login: string, password: string): Promise<void> {
+  const response = await fetch('/api/v1/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ login, password }),
+  }).catch(() => {
+    throw fail(new ServiceError('offline'))
+  })
+  if (!response.ok) throw new Error(response.status === 429 ? 'Too many attempts. Wait a minute and try again.' : await problemMessage(response))
+  adopt(await response.json())
+}
+
+export async function signOut(): Promise<void> {
+  await fetch('/api/v1/auth/logout', { method: 'POST' }).catch(() => undefined)
+  endSession()
+}
+
 export const api = {
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    await call<void>('/auth/change-password', 'POST', { currentPassword, newPassword })
+    endSession()
+  },
+  setUserPassword: (id: number, password: string) => call<void>(`/users/${id}/password`, 'PUT', { password }),
+
   list: () => call<Department[]>('/departments'),
   get: (id: number) => call<Department>(`/departments/${id}`),
   create: (input: DepartmentInput & { code: string }) => call<Department>('/departments', 'POST', input),
@@ -166,7 +226,7 @@ export const api = {
 
   users: () => call<User[]>('/users'),
   user: (id: number) => call<User>(`/users/${id}`),
-  createUser: (input: UserInput & { departmentIds?: number[]; roles?: string[] }) => call<User>('/users', 'POST', input),
+  createUser: (input: UserInput & { departmentIds?: number[]; roles?: string[]; password?: string }) => call<User>('/users', 'POST', input),
   updateUser: (id: number, input: UserInput & { isActive: boolean }) => call<User>(`/users/${id}`, 'PUT', input),
   assignUserDepartments: (id: number, departmentIds: number[]) => call<User>(`/users/${id}/departments`, 'PUT', { departmentIds }),
   assignUserRoles: (id: number, roles: string[]) => call<User>(`/users/${id}/roles`, 'PUT', { roles }),

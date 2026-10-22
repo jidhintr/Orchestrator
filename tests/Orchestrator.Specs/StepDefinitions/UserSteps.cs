@@ -31,10 +31,12 @@ public sealed class UserSteps(ApiContext api)
     public async Task GivenAUserExists(string alias, string departmentCodes, string roles)
     {
         var departmentIds = Split(departmentCodes).Select(code => int.Parse(api.Expand("{dept:" + code + "}"), System.Globalization.CultureInfo.InvariantCulture));
-        var body = JsonSerializer.Serialize(new { firstName = alias, lastName = "Tester", mobile = "9876543210", departmentIds, roles = Split(roles) });
+        var mobile = ApiContext.NextMobile();
+        var body = JsonSerializer.Serialize(new { firstName = alias, lastName = "Tester", mobile, departmentIds, roles = Split(roles) });
         await api.SendAsSuperAdminAsync("POST", "/api/v1/users", body);
         Assert.Equal(201, (int)api.Status);
         api.Aliases["user:" + alias] = api.LastId!;
+        ApiHost.RegisterLogin(int.Parse(api.LastId!, System.Globalization.CultureInfo.InvariantCulture), mobile);
     }
 
     private string[] Split(string list) =>

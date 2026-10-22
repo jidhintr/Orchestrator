@@ -41,11 +41,6 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.HasData(
                         new
                         {
-                            DepartmentsId = 1,
-                            RolesId = 1
-                        },
-                        new
-                        {
                             DepartmentsId = 2,
                             RolesId = 2
                         },
@@ -73,13 +68,8 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.HasData(
                         new
                         {
-                            DepartmentsId = 1,
-                            UsersId = 1
-                        },
-                        new
-                        {
                             DepartmentsId = 2,
-                            UsersId = 2
+                            UsersId = 1
                         });
                 });
 
@@ -423,63 +413,43 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.HasData(
                         new
                         {
-                            Id = 1,
-                            Code = "SUPER_ADMIN",
-                            InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsSystem = true,
-                            LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Super Admin"
-                        },
-                        new
-                        {
                             Id = 2,
-                            Code = "ADMIN",
+                            Code = "ADMINISTRATIVES",
                             InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsSystem = true,
                             LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Admin"
+                            Name = "Administratives"
                         },
                         new
                         {
                             Id = 3,
-                            Code = "ACCOUNTS",
+                            Code = "ACCOUNTING",
                             InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsSystem = true,
                             LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Accounts"
+                            Name = "Accounting"
                         },
                         new
                         {
                             Id = 4,
-                            Code = "QA",
+                            Code = "QUALITY_CHECK",
                             InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsSystem = true,
                             LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "QA"
-                        },
-                        new
-                        {
-                            Id = 5,
-                            Code = "DELIVERY",
-                            InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            IsSystem = true,
-                            LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Delivery"
+                            Name = "Quality Check"
                         },
                         new
                         {
                             Id = 6,
-                            Code = "CLIENTS",
+                            Code = "CUSTOMERS",
                             InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             IsActive = true,
                             IsSystem = true,
                             LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Name = "Clients"
+                            Name = "Customers"
                         },
                         new
                         {
@@ -613,6 +583,59 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.HasIndex("CatalogId");
 
                     b.ToTable("orders", "biz");
+                });
+
+            modelBuilder.Entity("Orchestrator.Domain.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("InsertedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("InsertedById")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LastUpdatedById")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamilyId");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("refresh_tokens", "identity");
                 });
 
             modelBuilder.Entity("Orchestrator.Domain.Role", b =>
@@ -762,6 +785,9 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
+                    b.HasIndex("Mobile")
+                        .IsUnique();
+
                     b.ToTable("users", "biz");
 
                     b.HasData(
@@ -775,18 +801,56 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                             LastName = "Admin",
                             LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
                             Mobile = "0000000000"
-                        },
-                        new
-                        {
-                            Id = 2,
-                            Email = "admin@orchestrator.local",
-                            FirstName = "Admin",
-                            InsertedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsActive = true,
-                            LastName = "User",
-                            LastUpdatedAt = new DateTime(2026, 10, 21, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Mobile = "0000000000"
                         });
+                });
+
+            modelBuilder.Entity("Orchestrator.Domain.UserCredential", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<int>("FailedCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("InsertedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("InsertedById")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LastUpdatedById")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("PasswordChangedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("user_credentials", "identity");
                 });
 
             modelBuilder.Entity("RoleUser", b =>
@@ -802,6 +866,13 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.HasIndex("UsersId");
 
                     b.ToTable("user_roles", "biz");
+
+                    b.HasData(
+                        new
+                        {
+                            RolesId = 1,
+                            UsersId = 1
+                        });
                 });
 
             modelBuilder.Entity("DepartmentRole", b =>
@@ -887,6 +958,26 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Catalog");
+                });
+
+            modelBuilder.Entity("Orchestrator.Domain.RefreshToken", b =>
+                {
+                    b.HasOne("Orchestrator.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Orchestrator.Domain.UserCredential", b =>
+                {
+                    b.HasOne("Orchestrator.Domain.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("RoleUser", b =>

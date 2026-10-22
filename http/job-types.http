@@ -1,16 +1,28 @@
-### Job types API v1. Reads are anonymous; changes need an admin or super admin in the temporary X-Acting-User-Id header (1 = Super Admin).
+### Job types API v1. Every request needs the access token from the sign in request below.
 ### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### Sign in (put login and password in http/http-client.private.env.json, which is git-ignored)
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{login}}",
+  "password": "{{password}}"
+}
+
 ### Seeded ids: 1 Cutting, 2 Laminating, 3 Quality Assurance, 4 Delivery.
 
 ### List all job types
 GET {{baseUrl}}/api/v1/job-types
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Create a job type (cost, commission and profit overrides are optional)
 # @name create
 POST {{baseUrl}}/api/v1/job-types
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
-X-Acting-User-Id: 1
 
 {
   "name": "Binding",
@@ -22,16 +34,18 @@ X-Acting-User-Id: 1
 
 ### Get the job type created above
 GET {{baseUrl}}/api/v1/job-types/{{create.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Which catalogs use job type 1?
 GET {{baseUrl}}/api/v1/job-types/1/catalogs
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Update the job type
 PUT {{baseUrl}}/api/v1/job-types/{{create.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
-X-Acting-User-Id: 1
 
 {
   "name": "Binding and Stitching",
@@ -40,28 +54,30 @@ X-Acting-User-Id: 1
 
 ### Deactivate it (cannot be added to catalogs afterwards)
 POST {{baseUrl}}/api/v1/job-types/{{create.response.body.$.id}}/deactivate
-X-Acting-User-Id: 1
+Authorization: Bearer {{login.response.body.$.accessToken}}
 
 ### Duplicate name returns 409
 POST {{baseUrl}}/api/v1/job-types
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
-X-Acting-User-Id: 1
 
 { "name": "cutting" }
 
 ### Invalid input returns 400
 POST {{baseUrl}}/api/v1/job-types
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
-X-Acting-User-Id: 1
 
 { "name": "X", "profitPercent": 150 }
 
 ### Without an acting user changes return 401
 POST {{baseUrl}}/api/v1/job-types
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "name": "Ghost" }
 
 ### Unknown id returns 404
 GET {{baseUrl}}/api/v1/job-types/999999
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json

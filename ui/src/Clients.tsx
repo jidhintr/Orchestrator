@@ -1,3 +1,4 @@
+import { useAccess } from './access'
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, type Client, type ClientInput, type ClientStatus, type ClientTier } from './api'
 import { Badge, Filters, Icon, matches, message, Modal, Page, Select, locked, useList, useRunner, useToast, Form, Submit } from './ui'
@@ -18,6 +19,7 @@ export function Clients() {
   const [status, setStatus] = useState('all')
   const [tier, setTier] = useState('all')
   const [toast, notify] = useToast()
+  const canEdit = useAccess().can('clients')
   const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = () => setPanel(null)
@@ -35,7 +37,7 @@ export function Clients() {
 
   return (
     <Page title="Clients" subtitle="Companies that place orders."
-      action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New client</button>}>
+      action={canEdit ? <button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New client</button> : null}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search company, contact, email or phone"
         onClear={() => { setQuery(''); setStatus('all'); setTier('all') }}>
@@ -55,14 +57,14 @@ export function Clients() {
                 <td data-label="Tier"><Badge kind={c.tier === 'Normal' ? 'muted' : 'info'}>{c.tier}</Badge></td>
                 <td data-label="Discount">{c.tierDiscountPercent}%</td>
                 <td data-label="Status"><StatusBadge status={c.status} /></td>
-                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${c.companyName}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button></td>
+                <td data-label="" className="row-actions">{canEdit && <button className="secondary small" aria-label={`Edit ${c.companyName}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New client" onClose={close}><CreateForm onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit client' : 'Client'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} onChanged={() => void load()} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit client' : 'Client'} readOnly={!panel.edit} onEdit={canEdit ? () => setPanel({ ...panel, edit: true }) : undefined} changeKey={panel.id} onClose={close}><Detail id={panel.id} onChanged={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )

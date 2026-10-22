@@ -1,4 +1,3 @@
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using Orchestrator.Application.Access;
 using Orchestrator.Domain;
@@ -6,9 +5,9 @@ using Orchestrator.Infrastructure.Persistence;
 
 namespace Orchestrator.UnitTests;
 
-internal sealed class FakeUserId(string? raw) : ICurrentUserId
+internal sealed class FakeUserId(int? id) : ICurrentUserId
 {
-    public string? Raw => raw;
+    public int? Id => id;
 }
 
 internal static class TestDb
@@ -20,10 +19,14 @@ internal static class TestDb
     {
         var db = new OrchestratorDbContext(new DbContextOptionsBuilder<OrchestratorDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         db.Database.EnsureCreated();
+        var admin = new User { Id = AdminUser, FirstName = "Admin", LastName = "Tester", Email = "admin.tester@orchestrator.local", Mobile = "0000000002" };
+        admin.Departments.AddRange(db.Departments.Where(d => d.Id == 2));
+        db.Users.Add(admin);
+        db.SaveChanges();
         return db;
     }
 
-    public static ActingUser As(this OrchestratorDbContext db, int? userId) => new(new FakeUserId(userId?.ToString(CultureInfo.InvariantCulture)), db);
+    public static CurrentUser As(this OrchestratorDbContext db, int? userId) => new(new FakeUserId(userId), db);
 
     public static Department AddDepartment(this OrchestratorDbContext db, string code, params int[] roleIds)
     {

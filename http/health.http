@@ -1,3 +1,9 @@
 ### Health
 GET {{baseUrl}}/api/health
 X-Correlation-Id: demo-123
+
+### Liveness (no dependency checks)
+GET {{baseUrl}}/api/health/live
+
+### Readiness (needs PostgreSQL)
+GET {{baseUrl}}/api/health/ready

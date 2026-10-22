@@ -1,3 +1,4 @@
+using Orchestrator.Application.Auth;
 using Orchestrator.Application.Errors;
 using Orchestrator.Application.Roles;
 using Orchestrator.Application.Users;
@@ -24,7 +25,11 @@ public class UserServiceTests
         _employee = _db.AddUser("presshand", [_press.Id], SystemIds.EmployeeRole);
     }
 
-    private UserService As(int? userId = TestDb.SuperAdminUser) => new(_db, new RoleService(_db), _db.As(userId));
+    private UserService As(int? userId = TestDb.SuperAdminUser)
+    {
+        var current = _db.As(userId);
+        return new(_db, new RoleService(_db), current, new AuthService(_db, current));
+    }
 
     private static CreateUserRequest Create(string name = "newbie", List<int>? departments = null, List<string>? roles = null) =>
         new() { FirstName = name, LastName = "Person", Email = $"{name}@x.local", Mobile = "0123456789", DepartmentIds = departments, Roles = roles };
@@ -244,6 +249,10 @@ public class UserServiceTests
         var updated = await As().AssignDepartmentsAsync(_employee.Id, new AssignDepartmentsRequest { DepartmentIds = [] }, default);
         Assert.Equal([SystemIds.UnassignedDepartment], updated.Departments.Select(d => d.Id));
     }
+
+    [Fact]
+    public async Task AssignDepartments_customers_cannot_be_combined_with_another_department() =>
+        await Assert.ThrowsAsync<BadRequestException>(() => As().AssignDepartmentsAsync(_employee.Id, new AssignDepartmentsRequest { DepartmentIds = [SystemIds.CustomersDepartment, _bindery.Id] }, default));
 
     [Fact]
     public async Task AssignDepartments_unknown_department_is_bad_request() =>

@@ -316,3 +316,21 @@ option { background: var(--card); color: var(--ink); }
 .picker ol li.dragging { opacity: .4; }
 .picker ol li.over { background: var(--field); box-shadow: inset 0 2px 0 var(--accent); }
 .picker .moved-tag { padding: 1px 7px; border-radius: 999px; background: var(--field); border: 1px solid var(--line); color: var(--muted); font-size: .68rem; white-space: nowrap; }
+.sign-out { margin-top: 8px; width: 100%; }
+
+.login { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); }
+.login-art { display: grid; place-content: center; justify-items: center; gap: 6px; padding: 32px; background: var(--card); border-right: 1px solid var(--line); text-align: center; }
+.login-art svg { width: min(280px, 60%); margin-bottom: 18px; }
+.login-art .ink-c, .login-art .ink-m, .login-art .ink-y { mix-blend-mode: multiply; }
+.login-art .ink-c { fill: #00a0d6; fill-opacity: .8; } .login-art .ink-m { fill: #e0267a; fill-opacity: .8; } .login-art .ink-y { fill: #f2d600; fill-opacity: .85; }
+.login-art .reg { stroke: var(--ink); stroke-width: 1.5; }
+.login-art .wordmark { font-size: 1.6rem; font-weight: 780; letter-spacing: -.02em; }
+.login-art p:not(.wordmark) { color: var(--muted); }
+.login-form { display: grid; place-items: center; padding: 24px; }
+.login-form form { width: min(360px, 100%); margin: 0; }
+.login-form h1 { font-size: 1.7rem; font-weight: 750; letter-spacing: -.025em; margin-bottom: 4px; }
+.reveal { display: flex; gap: 8px; }
+.reveal button { flex: none; min-height: 40px; }
+@media (prefers-color-scheme: dark) { .login-art .ink-c, .login-art .ink-m, .login-art .ink-y { mix-blend-mode: screen; fill-opacity: .6; } }
+@media (max-width: 860px) { .login { grid-template-columns: 1fr; } .login-art { display: none; } }
+.profile-grid .pane { grid-column: auto; }

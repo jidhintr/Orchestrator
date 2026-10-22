@@ -1,8 +1,8 @@
 @UC-003
 Feature: Role management and department roles
 
-  Roles are managed by admins and super admins only (acting user in the X-Acting-User-Id header, temporary until
-  authentication). Departments carry roles that all their users inherit. Reading is open.
+  Roles are managed by admins and super admins only. Departments carry roles that all their users inherit. Everything needs a
+  signed-in user.
 
   Background:
     Given a department "Press {unique}" with code "PRS{unique}" exists
@@ -108,8 +108,8 @@ Feature: Role management and department roles
     And the response list contains an item where "firstName" is "Ann"
     And the response list contains an item where "firstName" is "Ben"
 
-  Scenario: The Clients department carries the Client role
-    When I send a GET request to "/api/v1/departments/{dept:CLIENTS}/roles"
+  Scenario: The Customers department carries the Client role
+    When I send a GET request to "/api/v1/departments/{dept:CUSTOMERS}/roles"
     Then the response status is 200
     And the response list contains an item where "name" is "Client"
 
@@ -145,16 +145,16 @@ Feature: Role management and department roles
       | Ann   | POST   | /api/v1/roles/{role:Employee}/enable       |
       | Ann   | DELETE | /api/v1/roles/{role:Employee}              |
       | Ann   | POST   | /api/v1/departments                        |
-      | Ann   | PUT    | /api/v1/departments/{dept:QA}              |
-      | Ann   | POST   | /api/v1/departments/{dept:QA}/deactivate   |
-      | Ann   | PUT    | /api/v1/departments/{dept:QA}/roles        |
+      | Ann   | PUT    | /api/v1/departments/{dept:QUALITY_CHECK}              |
+      | Ann   | POST   | /api/v1/departments/{dept:QUALITY_CHECK}/deactivate   |
+      | Ann   | PUT    | /api/v1/departments/{dept:QUALITY_CHECK}/roles        |
 
-  Scenario: Reading roles and departments needs no acting user
+  Scenario: Reading roles and departments needs a signed-in user
     Given I act as nobody
     When I send a GET request to "/api/v1/roles"
-    Then the response status is 200
+    Then the response is a problem with status 401
     When I send a GET request to "/api/v1/departments"
-    Then the response status is 200
+    Then the response is a problem with status 401
 
   Scenario: Changing roles without an acting user is unauthorized
     Given I act as nobody
@@ -177,7 +177,7 @@ Feature: Role management and department roles
       | Admin       |
       | Super Admin |
 
-  Scenario Outline: An admin cannot change the roles of the Admin or Super Admin departments
+  Scenario Outline: An admin cannot change the roles of the Administratives department
     Given I act as "Admin"
     When I send a PUT request to "/api/v1/departments/<department>/roles" with body:
       """
@@ -189,8 +189,7 @@ Feature: Role management and department roles
 
     Examples:
       | department          |
-      | {dept:ADMIN}        |
-      | {dept:SUPER_ADMIN}  |
+      | {dept:ADMINISTRATIVES} |
 
   Scenario: A super admin can give a department admin-level roles
     Given I act as "SA"

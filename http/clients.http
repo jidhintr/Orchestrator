@@ -1,13 +1,25 @@
-### Clients API v1. Anonymous for now (authentication is undecided).
+### Clients API v1. Every request needs the access token from the sign in request below.
 ### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### Sign in (put login and password in http/http-client.private.env.json, which is git-ignored)
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{login}}",
+  "password": "{{password}}"
+}
 
 ### List all clients
 GET {{baseUrl}}/api/v1/clients
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Create a client
 # @name create
 POST {{baseUrl}}/api/v1/clients
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -21,10 +33,12 @@ Content-Type: application/json
 
 ### Get the client created above
 GET {{baseUrl}}/api/v1/clients/{{create.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Move to Gold (discount follows the tier)
 PUT {{baseUrl}}/api/v1/clients/{{create.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -38,12 +52,14 @@ Content-Type: application/json
 
 ### Suspend the account
 PUT {{baseUrl}}/api/v1/clients/{{create.response.body.$.id}}/status
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "status": "Suspended" }
 
 ### Duplicate email returns 409
 POST {{baseUrl}}/api/v1/clients
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -56,10 +72,12 @@ Content-Type: application/json
 
 ### Invalid input returns 400
 POST {{baseUrl}}/api/v1/clients
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "companyName": "A", "contactName": "", "email": "nope", "phone": "1", "shippingAddress": "" }
 
 ### Unknown id returns 404
 GET {{baseUrl}}/api/v1/clients/999999
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json

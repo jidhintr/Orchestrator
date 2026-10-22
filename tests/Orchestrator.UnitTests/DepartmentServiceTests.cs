@@ -18,13 +18,13 @@ public class DepartmentServiceTests
     public async Task List_returns_seeded_departments_ordered_by_name()
     {
         var list = await As().ListAsync(default);
-        Assert.Equal(["Accounts", "Admin", "Clients", "Delivery", "QA", "Super Admin", "Unassigned"], list.Select(d => d.Name));
+        Assert.Equal(["Accounting", "Administratives", "Customers", "Quality Check", "Unassigned"], list.Select(d => d.Name));
     }
 
     [Fact]
     public async Task Get_returns_department_and_unknown_is_not_found()
     {
-        Assert.Equal("QA", (await As().GetAsync(4, default)).Code);
+        Assert.Equal("QUALITY_CHECK", (await As().GetAsync(4, default)).Code);
         await Assert.ThrowsAsync<NotFoundException>(() => As().GetAsync(9999, default));
     }
 
@@ -52,7 +52,7 @@ public class DepartmentServiceTests
     public async Task Update_system_department_cannot_be_renamed_but_description_can_change()
     {
         await Assert.ThrowsAsync<ConflictException>(() => As().UpdateAsync(4, new UpdateDepartmentRequest { Name = "Quality" }, default));
-        var updated = await As().UpdateAsync(4, new UpdateDepartmentRequest { Name = "QA", Description = "Checks" }, default);
+        var updated = await As().UpdateAsync(4, new UpdateDepartmentRequest { Name = "Quality Check", Description = "Checks" }, default);
         Assert.Equal("Checks", updated.Description);
     }
 

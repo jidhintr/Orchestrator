@@ -19,6 +19,9 @@ public sealed record CreateUserRequest
     public List<int>? DepartmentIds { get; init; }
 
     public List<string>? Roles { get; init; }
+
+    [StringLength(128, MinimumLength = 10)]
+    public string? Password { get; init; }
 }
 
 public sealed record UpdateUserRequest

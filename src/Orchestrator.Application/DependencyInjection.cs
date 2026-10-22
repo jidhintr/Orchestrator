@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Orchestrator.Application.Access;
 using Orchestrator.Application.ApprovalChains;
+using Orchestrator.Application.Auth;
 using Orchestrator.Application.Catalogs;
 using Orchestrator.Application.Clients;
 using Orchestrator.Application.Departments;
@@ -20,5 +21,6 @@ public static class DependencyInjection
         .AddScoped<ClientService>()
         .AddScoped<ApprovalChainService>()
         .AddScoped<JobTypeService>()
-        .AddScoped<ActingUser>();
+        .AddScoped<CurrentUser>()
+        .AddScoped<AuthService>();
 }

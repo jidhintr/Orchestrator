@@ -4,21 +4,13 @@ using Orchestrator.Domain;
 
 namespace Orchestrator.UnitTests;
 
-public class ActingUserTests
+public class CurrentUserTests
 {
     [Fact]
     public async Task Missing_header_is_unauthorized()
     {
         using var db = TestDb.Create();
         await Assert.ThrowsAsync<UnauthorizedException>(() => db.As(null).RequireAsync(Rank.Employee, default));
-    }
-
-    [Fact]
-    public async Task Non_numeric_id_is_unauthorized()
-    {
-        using var db = TestDb.Create();
-        var acting = new ActingUser(new FakeUserId("abc"), db);
-        await Assert.ThrowsAsync<UnauthorizedException>(() => acting.RequireAsync(Rank.Employee, default));
     }
 
     [Fact]
@@ -44,8 +36,8 @@ public class ActingUserTests
         using var db = TestDb.Create();
         var actor = await db.As(TestDb.SuperAdminUser).RequireAsync(Rank.SuperAdmin, default);
         Assert.Equal(Rank.SuperAdmin, actor.Rank);
-        Assert.Equal([SystemIds.SuperAdminRole], actor.DepartmentRoleIds);
-        Assert.Contains(1, actor.DepartmentIds);
+        Assert.Equal([SystemIds.AdminRole], actor.DepartmentRoleIds);
+        Assert.Contains(SystemIds.AdministrativesDepartment, actor.DepartmentIds);
         Assert.False(actor.IsManager);
     }
 

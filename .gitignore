@@ -370,3 +370,7 @@ FodyWeavers.xsd
 # UI build output
 ui/dist/
 ui/*.tsbuildinfo
+
+# Local HTTP client credentials
+http/http-client.private.env.json
+.env.local

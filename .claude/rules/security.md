@@ -7,12 +7,11 @@ paths:
 
 # Security rules
 
-- Authentication is **undecided**. Do not invent a real scheme; ask. Until decided, reads are anonymous (say so in docs) and
-  changes identify the caller with the temporary, trusted `X-Acting-User-Id` header (ADR-0003). Never use it for anything
-  beyond local/dev. Once auth is decided, replace `ActingUser` and keep the 401/403 scenarios.
+- Authentication is password sign-in with JWT (ADR-0005). Every endpoint is behind the fallback authorization policy; `[AllowAnonymous]`
+  only for health, sign in, refresh and logout. Never log or return passwords, tokens or hashes. Dev-phase gaps: `docs/TODO-auth-end-of-dev.md`.
 - Never commit secrets. Connection strings come from user-secrets / environment variables. `.env` is gitignored;
   no `.env` template is committed. No real credentials in tests, docs, `.http` or k6 files.
-- Treat all client input as untrusted; validate server-side. Never trust client-supplied identity, role, price or permission (the temporary acting-user header is the one documented exception).
+- Treat all client input as untrusted; validate server-side. Never trust client-supplied identity, role, price or permission.
 - Use EF Core parameterization; no string-built SQL.
 - Do not log secrets, connection strings or personal data.
 - Scalar/OpenAPI are Development-only; do not expose them in other environments without an explicit decision.

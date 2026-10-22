@@ -3,7 +3,8 @@ import { defineConfig, loadEnv } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig(({ mode }) => {
-  const proxy = { '/api': loadEnv(mode, '.', '').API_URL || 'http://localhost:5176' }
+  const target = loadEnv(mode, '.', '').API_URL || 'http://localhost:5176'
+  const proxy = { '/api': { target, secure: false } }
   return {
     plugins: [
       react(),

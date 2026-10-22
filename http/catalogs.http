@@ -1,14 +1,27 @@
-### Catalogs API v1. Anonymous for now (authentication is undecided).
+### Catalogs API v1. Every request needs the access token from the sign in request below.
 ### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### Sign in (put login and password in http/http-client.private.env.json, which is git-ignored)
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "superadmin@orchestrator.local",
+  "password": "12345678"
+}
+
 ### Seeded job type ids: 1 Cutting, 2 Laminating, 3 Quality Assurance, 4 Delivery.
 
 ### List all catalogs
 GET {{baseUrl}}/api/v1/catalogs
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Create a catalog
 # @name create
 POST {{baseUrl}}/api/v1/catalogs
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -25,11 +38,13 @@ Content-Type: application/json
 
 ### Get the catalog created above
 GET {{baseUrl}}/api/v1/catalogs/{{create.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
 ### Clone it (allowed even when the source has orders)
 # @name clone
 POST {{baseUrl}}/api/v1/catalogs/{{create.response.body.$.id}}/clone
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -39,6 +54,7 @@ Content-Type: application/json
 
 ### Reorder / add / remove job types on the clone (409 if the catalog has orders)
 PUT {{baseUrl}}/api/v1/catalogs/{{clone.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 {
@@ -54,3 +70,4 @@ Content-Type: application/json
 
 ### Deactivate the clone (409 if the catalog has orders)
 POST {{baseUrl}}/api/v1/catalogs/{{clone.response.body.$.id}}/deactivate
+Authorization: Bearer {{login.response.body.$.accessToken}}

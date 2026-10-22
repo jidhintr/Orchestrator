@@ -1,3 +1,4 @@
+import { useAccess } from './access'
 import { type FormEvent, useEffect, useState } from 'react'
 import { api, type ApprovalChain, type Catalog, type Department } from './api'
 import { Badge, Timeline, Filters, Icon, matches, message, Modal, OrderedPicker, Page, Select, locked, useList, useRunner, useToast, Form, Submit } from './ui'
@@ -23,6 +24,7 @@ export function Chains() {
   const [scope, setScope] = useState('all')
   const [department, setDepartment] = useState('all')
   const [toast, notify] = useToast()
+  const canEdit = useAccess().can('chains')
   const open = (next: Panel) => { if (!locked(panel)) setPanel(next) }
 
   const close = () => setPanel(null)
@@ -40,7 +42,7 @@ export function Chains() {
 
   return (
     <Page title="Approval chains" subtitle="Which departments approve an order, in order."
-      action={<button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New chain</button>}>
+      action={canEdit ? <button onClick={() => setPanel({ mode: 'create' })}><Icon name="plus" />New chain</button> : null}>
       {error && <p role="alert" className="error">{error}</p>}
       <Filters query={query} onQuery={setQuery} count={visible?.length ?? 0} total={items?.length ?? 0} dirty={dirty} placeholder="Search name, description or catalog"
         onClear={() => { setQuery(''); setScope('all'); setDepartment('all') }}>
@@ -58,14 +60,14 @@ export function Chains() {
                 <td data-label="Chain"><button className="link" onClick={() => open({ mode: 'detail', id: c.id })}>{c.name}</button></td>
                 <td data-label="Applies to">{c.isDefault ? <Badge>Default</Badge> : catalogName(lookups, c.catalogId)}</td>
                 <td data-label="Stages"><Timeline items={c.stages.map((s) => s.departmentName)} empty="No stages" /></td>
-                <td data-label="" className="row-actions"><button className="secondary small" aria-label={`Edit ${c.name}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button></td>
+                <td data-label="" className="row-actions">{canEdit && <button className="secondary small" aria-label={`Edit ${c.name}`} onClick={() => setPanel({ mode: 'detail', id: c.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       )}
       {panel?.mode === 'create' && <Modal title="New approval chain" onClose={close}><CreateForm lookups={lookups} onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit approval chain' : 'Approval chain'} readOnly={!panel.edit} onEdit={() => setPanel({ ...panel, edit: true })} changeKey={panel.id} onClose={close}><Detail id={panel.id} lookups={lookups} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit approval chain' : 'Approval chain'} readOnly={!panel.edit} onEdit={canEdit ? () => setPanel({ ...panel, edit: true }) : undefined} changeKey={panel.id} onClose={close}><Detail id={panel.id} lookups={lookups} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )

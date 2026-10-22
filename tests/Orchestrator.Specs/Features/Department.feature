@@ -5,13 +5,12 @@ Feature: Department management
     When I send a GET request to "/api/v1/departments"
     Then the response status is 200
     And the response list contains the departments:
-      | code        | name        |
-      | SUPER_ADMIN | Super Admin |
-      | ADMIN       | Admin       |
-      | ACCOUNTS    | Accounts    |
-      | QA          | QA          |
-      | DELIVERY    | Delivery    |
-      | CLIENTS     | Clients     |
+      | code            | name            |
+      | ADMINISTRATIVES | Administratives |
+      | ACCOUNTING      | Accounting      |
+      | QUALITY_CHECK   | Quality Check   |
+      | CUSTOMERS       | Customers       |
+      | UNASSIGNED      | Unassigned      |
 
   Scenario: Create a department and read it back
     When I send a POST request to "/api/v1/departments" with body:
@@ -108,17 +107,17 @@ Feature: Department management
     Then the response is a problem with status 404
 
   Scenario: System departments cannot be renamed
-    Given I have the id of the department with code "QA"
+    Given I have the id of the department with code "QUALITY_CHECK"
     When I send a PUT request to "/api/v1/departments/{id}" with body:
       """
       { "name": "Quality {unique}" }
       """
     Then the response is a problem with status 409
     When I send a GET request to "/api/v1/departments/{id}"
-    Then the response JSON "name" is "QA"
+    Then the response JSON "name" is "Quality Check"
 
   Scenario: System departments cannot be deactivated
-    Given I have the id of the department with code "ADMIN"
+    Given I have the id of the department with code "ADMINISTRATIVES"
     When I send a POST request to "/api/v1/departments/{id}/deactivate"
     Then the response is a problem with status 409
     When I send a GET request to "/api/v1/departments/{id}"

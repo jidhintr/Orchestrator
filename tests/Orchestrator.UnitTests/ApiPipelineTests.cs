@@ -1,4 +1,4 @@
-using System.Globalization;
+using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -97,24 +97,27 @@ public class ApiPipelineTests
     }
 
     [Fact]
-    public void Current_user_id_reads_the_acting_user_header()
+    public void Current_user_id_reads_the_sub_claim()
     {
-        var context = new DefaultHttpContext();
-        context.Request.Headers[ActingUser.Header] = "42";
-        Assert.Equal("42", new HttpCurrentUserId(new HttpContextAccessor { HttpContext = context }).Raw);
+        var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "42")], "test")) };
+        Assert.Equal(42, new HttpCurrentUserId(new HttpContextAccessor { HttpContext = context }).Id);
     }
 
     [Fact]
-    public void Current_user_id_is_empty_without_header() =>
-        Assert.Equal(string.Empty, new HttpCurrentUserId(new HttpContextAccessor { HttpContext = new DefaultHttpContext() }).Raw);
+    public void Current_user_id_is_null_without_a_usable_sub_claim()
+    {
+        Assert.Null(new HttpCurrentUserId(new HttpContextAccessor { HttpContext = new DefaultHttpContext() }).Id);
+        var context = new DefaultHttpContext { User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "abc")], "test")) };
+        Assert.Null(new HttpCurrentUserId(new HttpContextAccessor { HttpContext = context }).Id);
+    }
 
-    private static async Task<bool> RunAdminOnly(Func<OrchestratorDbContext, string?> actor)
+    private static async Task<bool> RunAdminOnly(Func<OrchestratorDbContext, int?> actor)
     {
         using var db = TestDb.Create();
         using var provider = new ServiceCollection()
             .AddSingleton<IAppDbContext>(db)
             .AddSingleton<ICurrentUserId>(new FakeUserId(actor(db)))
-            .AddScoped<ActingUser>()
+            .AddScoped<CurrentUser>()
             .BuildServiceProvider();
         var action = new ActionContext(new DefaultHttpContext { RequestServices = provider }, new RouteData(), new ActionDescriptor());
         var executing = new ActionExecutingContext(action, [], new Dictionary<string, object?>(), new object());
@@ -131,17 +134,17 @@ public class ApiPipelineTests
     [Fact]
     public async Task AdminOnly_lets_admins_and_super_admins_through()
     {
-        Assert.True(await RunAdminOnly(_ => "2"));
-        Assert.True(await RunAdminOnly(_ => "1"));
+        Assert.True(await RunAdminOnly(_ => 2));
+        Assert.True(await RunAdminOnly(_ => 1));
     }
 
     [Fact]
     public async Task AdminOnly_rejects_missing_unknown_and_low_rank_users()
     {
         await Assert.ThrowsAsync<UnauthorizedException>(() => RunAdminOnly(_ => null));
-        await Assert.ThrowsAsync<UnauthorizedException>(() => RunAdminOnly(_ => "9999"));
+        await Assert.ThrowsAsync<UnauthorizedException>(() => RunAdminOnly(_ => 9999));
         await Assert.ThrowsAsync<ForbiddenException>(() =>
-            RunAdminOnly(db => db.AddUser("plain", [SystemIds.UnassignedDepartment]).Id.ToString(CultureInfo.InvariantCulture)));
+            RunAdminOnly(db => db.AddUser("plain", [SystemIds.UnassignedDepartment]).Id));
     }
 
     [Fact]
