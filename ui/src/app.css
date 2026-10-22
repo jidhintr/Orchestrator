@@ -312,3 +312,7 @@ option { background: var(--card); color: var(--ink); }
 .filters .select { flex: 0 0 172px; width: 172px; }
 .filters .select select { width: 100%; min-width: 0; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
 @media (max-width: 640px) { .filters .select { flex: 1 1 140px; width: auto; } }
+.picker ol li[draggable=true] { cursor: grab; }
+.picker ol li.dragging { opacity: .4; }
+.picker ol li.over { background: var(--field); box-shadow: inset 0 2px 0 var(--accent); }
+.picker .moved-tag { padding: 1px 7px; border-radius: 999px; background: var(--field); border: 1px solid var(--line); color: var(--muted); font-size: .68rem; white-space: nowrap; }

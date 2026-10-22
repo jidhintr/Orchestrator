@@ -263,9 +263,14 @@ export const matches = (q: string, ...parts: (string | null | undefined)[]) => !
 export function OrderedPicker({ label, options, value, onChange, empty = 'Nothing added yet.' }: { label: string; options: { id: number; label: string }[]; value: number[]; onChange: (ids: number[]) => void; empty?: string }) {
   const [pick, setPick] = useState('')
   const name = (id: number) => options.find((o) => o.id === id)?.label ?? `#${id}`
+  const [drag, setDrag] = useState<{ from: number; over: number } | null>(null)
+  const [was, setWas] = useState<Record<number, number>>({})
   const move = (from: number, to: number) => {
+    if (from === to) return
     const next = [...value]
     next.splice(to, 0, next.splice(from, 1)[0])
+    const id = value[from]
+    setWas((w) => ({ ...w, [id]: w[id] ?? from + 1 }))
     onChange(next)
   }
   return (
@@ -273,11 +278,20 @@ export function OrderedPicker({ label, options, value, onChange, empty = 'Nothin
       {value.length === 0 && <p className="muted">{empty}</p>}
       <ol>
         {value.map((id, i) => (
-          <li key={`${id}-${i}`}>
+          <li key={`${id}-${i}`} draggable className={drag?.from === i ? 'dragging' : drag?.over === i ? 'over' : undefined}
+            onDragStart={(e) => {
+              if (e.currentTarget.closest('fieldset:disabled')) return e.preventDefault()
+              e.dataTransfer.effectAllowed = 'move'
+              setDrag({ from: i, over: i })
+            }}
+            onDragOver={(e) => { if (drag) { e.preventDefault(); if (drag.over !== i) setDrag({ ...drag, over: i }) } }}
+            onDrop={(e) => { e.preventDefault(); if (drag) move(drag.from, i); setDrag(null) }}
+            onDragEnd={() => setDrag(null)}>
             <span className="step-no">{i + 1}</span><span className="step-name">{name(id)}</span>
+            {was[id] !== undefined && was[id] !== i + 1 && <span className="moved-tag" title={`Moved from position ${was[id]}`}>was {was[id]}</span>}
             <button type="button" className="icon-btn" aria-label={`Move ${name(id)} up`} disabled={i === 0} onClick={() => move(i, i - 1)}>↑</button>
             <button type="button" className="icon-btn" aria-label={`Move ${name(id)} down`} disabled={i === value.length - 1} onClick={() => move(i, i + 1)}>↓</button>
-            <button type="button" className="icon-btn" aria-label={`Remove ${name(id)}`} onClick={() => onChange(value.filter((_, j) => j !== i))}>✕</button>
+            <button type="button" className="icon-btn" aria-label={`Remove ${name(id)}`} onClick={() => { setWas(({ [id]: _, ...rest }) => rest); onChange(value.filter((_, j) => j !== i)) }}>✕</button>
           </li>
         ))}
       </ol>
