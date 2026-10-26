@@ -19,7 +19,15 @@ public interface IAppDbContext
 
     DbSet<Order> Orders { get; }
 
-    DbSet<OrderStage> OrderStages { get; }
+    DbSet<OrderItem> OrderItems { get; }
+
+    DbSet<OrderItemJobStep> OrderItemJobSteps { get; }
+
+    DbSet<OrderItemJobStepLog> OrderItemJobStepLogs { get; }
+
+    DbSet<OrderApproval> OrderApprovals { get; }
+
+    DbSet<Priority> Priorities { get; }
 
     DbSet<OrderEventHistory> OrderEvents { get; }
 

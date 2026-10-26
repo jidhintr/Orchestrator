@@ -62,6 +62,7 @@ public sealed class JobTypeService(IAppDbContext db)
         jobType.LaborCost = request.LaborCost;
         jobType.CommissionPercent = request.CommissionPercent;
         jobType.ProfitPercent = request.ProfitPercent;
+        jobType.DepartmentId = request.DepartmentId ?? jobType.DepartmentId;
     }
 
     private async Task<JobType> FindAsync(int id, CancellationToken cancellationToken) =>

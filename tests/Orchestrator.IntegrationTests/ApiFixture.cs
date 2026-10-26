@@ -154,7 +154,9 @@ public sealed class ApiFixture : IAsyncLifetime
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<OrchestratorDbContext>();
-        db.Orders.Add(new Order { CatalogId = catalogId, ClientId = await NewClient() });
+        var order = new Order { ClientId = await NewClient(), PriorityId = SystemIds.NormalPriority };
+        order.Items.Add(new OrderItem { CatalogId = catalogId, CatalogSku = "SKU", CatalogName = "Catalog", Quantity = 1 });
+        db.Orders.Add(order);
         await db.SaveChangesAsync();
     }
 

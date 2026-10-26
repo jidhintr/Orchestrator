@@ -18,14 +18,31 @@ public sealed class OrderSteps(ApiContext api)
         await api.SendAsSuperAdminAsync("POST", "/api/v1/catalogs", JsonSerializer.Serialize(new { sku = $"ORD{api.Unique}", name = $"Catalog {api.Unique}", jobTypeIds = JobTypeIds }));
         Assert.Equal(201, (int)api.Status);
         api.Aliases["catalog:current"] = api.LastId!;
+        await api.SendAsSuperAdminAsync("POST", "/api/v1/approval-chains", JsonSerializer.Serialize(new { name = $"Chain {api.Unique}", catalogId = Id("catalog:current"), departmentIds = new[] { 3 } }));
+        Assert.Equal(201, (int)api.Status);
     }
 
     [Given("an order is placed for that client and catalog")]
     public async Task GivenAnOrderIsPlaced()
     {
-        await api.SendAsSuperAdminAsync("POST", "/api/v1/orders", JsonSerializer.Serialize(new { clientId = Id("client:current"), catalogId = Id("catalog:current"), quantity = 5 }));
+        await api.SendAsSuperAdminAsync("POST", "/api/v1/orders", JsonSerializer.Serialize(new { clientId = Id("client:current"), items = new[] { new { catalogId = Id("catalog:current"), quantity = 5 } } }));
         Assert.Equal(201, (int)api.Status);
         api.Aliases["order:current"] = api.LastId!;
+    }
+
+    [Given("the order is approved")]
+    public async Task GivenTheOrderIsApproved()
+    {
+        await api.SendAsSuperAdminAsync("POST", $"/api/v1/orders/{api.Aliases["order:current"]}/approvals/approve");
+        Assert.Equal(200, (int)api.Status);
+    }
+
+    [Given("I remember step {int} of the order as {string}")]
+    public async Task GivenIRememberStep(int number, string name)
+    {
+        await api.SendAsSuperAdminAsync("GET", $"/api/v1/orders/{api.Aliases["order:current"]}");
+        Assert.Equal(200, (int)api.Status);
+        api.Aliases["step:" + name] = api.Json!.Value.GetProperty("items")[0].GetProperty("steps")[number - 1].GetProperty("id").ToString();
     }
 
     [Given("a client user {string} exists")]

@@ -3,26 +3,32 @@ using Orchestrator.Domain;
 
 namespace Orchestrator.Application.Orders;
 
-public sealed record PlaceOrderRequest
+public sealed record OrderItemRequest
 {
-    public int? ClientId { get; init; }
-
     [Range(1, int.MaxValue)]
     public required int CatalogId { get; init; }
 
     [Range(1, 1_000_000)]
     public required int Quantity { get; init; }
+}
 
-    public DateOnly? DueDate { get; init; }
+public sealed record PlaceOrderRequest
+{
+    public int? ClientId { get; init; }
+
+    [Required, MinLength(1), MaxLength(50)]
+    public required IReadOnlyList<OrderItemRequest> Items { get; init; }
+
+    [Range(1, int.MaxValue)]
+    public int PriorityId { get; init; } = SystemIds.NormalPriority;
+
+    public DateOnly? CommitmentDeadline { get; init; }
 
     [StringLength(100)]
     public string? Reference { get; init; }
 
     [StringLength(1000)]
     public string? Notes { get; init; }
-
-    [EnumDataType(typeof(OrderPriority))]
-    public OrderPriority Priority { get; init; } = OrderPriority.Normal;
 }
 
 public sealed record CancelOrderRequest
@@ -33,8 +39,8 @@ public sealed record CancelOrderRequest
 
 public sealed record PriorityChangeRequest
 {
-    [EnumDataType(typeof(OrderPriority))]
-    public required OrderPriority Priority { get; init; }
+    [Range(1, int.MaxValue)]
+    public required int PriorityId { get; init; }
 
     [StringLength(500)]
     public string? Reason { get; init; }
@@ -49,19 +55,31 @@ public sealed record AdjustQuoteRequest
     public required string Reason { get; init; }
 }
 
-public sealed record OrderStageResponse(int JobTypeId, string JobTypeName, int Sequence, DateTime? EnteredAt, DateTime? ExitedAt);
+public sealed record PriorityResponse(int Id, string Name, int Rank, decimal Cost, bool IsActive)
+{
+    public static PriorityResponse From(Priority p) => new(p.Id, p.Name, p.Rank, p.Cost, p.IsActive);
+}
+
+public sealed record OrderStepResponse(int Id, int JobTypeId, string JobTypeName, int SortOrder, StepStatus Status, int Progress, DateTime? StartedAt, DateTime? CompletedAt);
+
+public sealed record OrderItemResponse(
+    int Id, int CatalogId, string CatalogSku, string CatalogName, int Quantity, decimal UnitPrice,
+    decimal CatalogDiscountPercent, decimal ClientDiscountPercent, decimal LineNet, IReadOnlyList<OrderStepResponse> Steps)
+{
+    public static OrderItemResponse From(OrderItem i) => new(
+        i.Id, i.CatalogId, i.CatalogSku, i.CatalogName, i.Quantity, i.UnitPrice, i.CatalogDiscountPercent, i.ClientDiscountPercent, i.LineNet,
+        [.. i.Steps.OrderBy(s => s.SortOrder).Select(s => new OrderStepResponse(s.Id, s.JobTypeId, s.JobTypeName, s.SortOrder, s.Status, s.Progress, s.StartedAt, s.CompletedAt))]);
+}
 
 public sealed record OrderResponse(
-    int Id, int ClientId, string ClientCompanyName, int CatalogId, string CatalogSku, string CatalogName,
-    int Quantity, DateOnly? DueDate, string? Reference, string? Notes,
-    decimal UnitPrice, decimal CatalogDiscountPercent, decimal ClientDiscountPercent, decimal QuotedTotal,
-    OrderPriority Priority, OrderStatus Status, int? ReturnedToDepartmentId, DateTime PlacedAt, IReadOnlyList<OrderStageResponse> Stages)
+    int Id, int ClientId, string ClientCompanyName, int PriorityId, string PriorityName, decimal PriorityCost,
+    DateOnly? CommitmentDeadline, string? Reference, string? Notes, decimal SubTotal, decimal DiscountTotal, decimal NetAmount,
+    OrderStatus Status, int? ReturnedToDepartmentId, DateTime PlacedAt, IReadOnlyList<OrderItemResponse> Items)
 {
     public static OrderResponse From(Order o) => new(
-        o.Id, o.ClientId, o.Client!.CompanyName, o.CatalogId, o.Catalog!.Sku, o.Catalog.Name,
-        o.Quantity, o.DueDate, o.Reference, o.Notes, o.UnitPrice, o.CatalogDiscountPercent, o.ClientDiscountPercent, o.QuotedTotal,
-        o.Priority, o.Status, o.ReturnedToDepartmentId, o.InsertedAt,
-        [.. o.Stages.OrderBy(s => s.Sequence).Select(s => new OrderStageResponse(s.JobTypeId, s.JobType!.Name, s.Sequence, s.EnteredAt, s.ExitedAt))]);
+        o.Id, o.ClientId, o.Client!.CompanyName, o.PriorityId, o.Priority!.Name, o.PriorityCost,
+        o.CommitmentDeadline, o.Reference, o.Notes, o.SubTotal, o.DiscountTotal, o.NetAmount,
+        o.Status, o.ReturnedToDepartmentId, o.InsertedAt, [.. o.Items.OrderBy(i => i.Id).Select(OrderItemResponse.From)]);
 }
 
 public sealed record OrderEventResponse(int Id, OrderEventType Type, int ActorUserId, string? FromValue, string? ToValue, string? Reason, DateTime At)

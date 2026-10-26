@@ -11,4 +11,6 @@ public sealed class JobType : BaseEntity
     public decimal? CommissionPercent { get; set; }
 
     public decimal? ProfitPercent { get; set; }
+
+    public int DepartmentId { get; set; } = SystemIds.OperationsDepartment;
 }

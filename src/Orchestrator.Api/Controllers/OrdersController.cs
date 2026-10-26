@@ -9,7 +9,7 @@ namespace Orchestrator.Api.Controllers;
 [Route("api/v{version:apiVersion}/orders")]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
 [ProducesResponseType<ProblemDetails>(StatusCodes.Status500InternalServerError)]
-public sealed class OrdersController(OrderService orders) : ControllerBase
+public sealed class OrdersController(OrderService orders, OrderApprovalService approvals) : ControllerBase
 {
     [HttpGet]
     [EndpointSummary("List orders")]
@@ -20,7 +20,7 @@ public sealed class OrdersController(OrderService orders) : ControllerBase
 
     [HttpGet("{id:int}", Name = "GetOrder")]
     [EndpointSummary("Get an order")]
-    [EndpointDescription("Includes the stages copied from the catalog with their enter and exit times. 404 for an order a client user does not own.")]
+    [EndpointDescription("Includes the items with their price snapshots and job steps. 404 for an order a client user does not own.")]
     [ProducesResponseType<OrderResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     public async Task<OrderResponse> Get(int id, CancellationToken cancellationToken) =>
@@ -34,9 +34,38 @@ public sealed class OrdersController(OrderService orders) : ControllerBase
     public async Task<IReadOnlyList<OrderEventResponse>> Events(int id, CancellationToken cancellationToken) =>
         await orders.EventsAsync(id, cancellationToken);
 
+    [HttpGet("{id:int}/approvals")]
+    [EndpointSummary("List the approvals of an order")]
+    [EndpointDescription("One row per approval stage, in order: the departments copied from the approval chain at placement (the catalog chain, else the default chain; several catalogs merge their chains without repeating a department). Client users do not see reasons. An empty list means the order was approved automatically.")]
+    [ProducesResponseType<IReadOnlyList<ApprovalResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IReadOnlyList<ApprovalResponse>> Approvals(int id, CancellationToken cancellationToken) =>
+        await approvals.ListAsync(id, cancellationToken);
+
+    [HttpPost("{id:int}/approvals/approve")]
+    [EndpointSummary("Approve the next stage")]
+    [EndpointDescription("Manager of the department that owns the next pending approval (admins and the super admin for any). After the last approval the order becomes InProgress and the first step of every item becomes Ready. 409 when the order is not PendingApproval.")]
+    [ProducesResponseType<OrderResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<OrderResponse> Approve(int id, CancellationToken cancellationToken) =>
+        await approvals.ApproveAsync(id, cancellationToken);
+
+    [HttpPost("{id:int}/approvals/deny")]
+    [EndpointSummary("Deny the next stage")]
+    [EndpointDescription("Same rights as approve; a reason is required. The order is cancelled and returned to the Estimation department.")]
+    [ProducesResponseType<OrderResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<OrderResponse> Deny(int id, StepReasonRequest request, CancellationToken cancellationToken) =>
+        await approvals.DenyAsync(id, request, cancellationToken);
+
     [HttpPost]
     [EndpointSummary("Place an order")]
-    [EndpointDescription("Starts PendingApproval with one stage per catalog step and a Placed event. quantity is required; dueDate (not in the past), reference and notes are optional. The quote is computed at placement: unitPrice (catalog base price) x quantity, reduced by the catalog discount and then the client tier discount; the percentages are stored with the order. Labor cost, commission and profit are never exposed. Staff pass clientId; a client user always orders for their own linked client. 400 for an unknown client or an unknown or deactivated catalog; 403 for a client user without a linked client; 409 when the client is Suspended or inactive.")]
+    [EndpointDescription("Starts PendingApproval with a Placed event. items lists catalogId and quantity (each catalog once). Each item snapshots the catalog price and discounts and gets one job step per catalog step. Item line net = base price x quantity, reduced by the catalog discount and then the client tier discount; netAmount = sum of line nets + the priority cost (priorityId, default Normal). commitmentDeadline (not in the past), reference and notes are optional. Labor cost, commission and profit are never exposed. Staff pass clientId; a client user always orders for their own linked client. 400 for an unknown client, priority or catalog, or a deactivated catalog; 403 for a client user without a linked client; 409 when the client is Suspended or inactive.")]
     [ProducesResponseType<OrderResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]
@@ -60,7 +89,7 @@ public sealed class OrdersController(OrderService orders) : ControllerBase
 
     [HttpPost("{id:int}/quote")]
     [EndpointSummary("Adjust the quote of an order")]
-    [EndpointDescription("Overrides quotedTotal with a reason, logged as a QuoteAdjusted event. Estimation department managers, admins and super admins only. 409 once the order is no longer PendingApproval.")]
+    [EndpointDescription("Overrides netAmount with a reason, logged as a QuoteAdjusted event. Estimation department managers, admins and super admins only. 409 once the order is no longer PendingApproval.")]
     [ProducesResponseType<OrderResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status403Forbidden)]

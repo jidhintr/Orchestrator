@@ -19,10 +19,13 @@ public sealed record JobTypeRequest
 
     [Range(typeof(decimal), "0", "100")]
     public decimal? ProfitPercent { get; init; }
+
+    [Range(1, int.MaxValue)]
+    public int? DepartmentId { get; init; }
 }
 
 public sealed record JobTypeResponse(
-    int Id, string Name, string? Description, decimal? LaborCost, decimal? CommissionPercent, decimal? ProfitPercent, bool IsActive)
+    int Id, string Name, string? Description, decimal? LaborCost, decimal? CommissionPercent, decimal? ProfitPercent, int DepartmentId, bool IsActive)
 {
-    public static JobTypeResponse From(JobType j) => new(j.Id, j.Name, j.Description, j.LaborCost, j.CommissionPercent, j.ProfitPercent, j.IsActive);
+    public static JobTypeResponse From(JobType j) => new(j.Id, j.Name, j.Description, j.LaborCost, j.CommissionPercent, j.ProfitPercent, j.DepartmentId, j.IsActive);
 }

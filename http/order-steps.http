@@ -1,0 +1,84 @@
+### Order steps API v1 (the assembly line). Every request needs the access token from the sign in request below.
+### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+### Run the orders.http requests first (or place any order with no approval stages) so a step is Ready.
+
+### Sign in (put login and password in http/http-client.private.env.json, which is git-ignored)
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{login}}",
+  "password": "{{password}}"
+}
+
+### Work queue: Ready steps of your departments (admins see all)
+# @name queue
+GET {{baseUrl}}/api/v1/order-steps?status=Ready
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json
+
+### Get the first step of the queue (waitMinutes and workMinutes run to now while open)
+GET {{baseUrl}}/api/v1/order-steps/{{queue.response.body.$[0].id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json
+
+### Assign (employees only themselves; managers any member of the step's department)
+POST {{baseUrl}}/api/v1/order-steps/{{queue.response.body.$[0].id}}/assign
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "userId": 1 }
+
+### Start (assignee or a manager of the department)
+POST {{baseUrl}}/api/v1/order-steps/{{queue.response.body.$[0].id}}/start
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Report progress (0 to 99)
+POST {{baseUrl}}/api/v1/order-steps/{{queue.response.body.$[0].id}}/progress
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "progress": 50, "note": "Halfway through the batch" }
+
+### Put on hold (reason required)
+POST {{baseUrl}}/api/v1/order-steps/{{queue.response.body.$[0].id}}/hold
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "reason": "Machine fault" }
+
+### Resume
+POST {{baseUrl}}/api/v1/order-steps/{{queue.response.body.$[0].id}}/resume
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Complete (the next step becomes Ready; the last open step completes the order)
+POST {{baseUrl}}/api/v1/order-steps/{{queue.response.body.$[0].id}}/complete
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Step history (append-only)
+GET {{baseUrl}}/api/v1/order-steps/{{queue.response.body.$[0].id}}/logs
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json
+
+### Reject the work back to the previous step (409 for a first step or one that cannot reject)
+POST {{baseUrl}}/api/v1/order-steps/{{queue.response.body.$[0].id}}/reject
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "reason": "Scratched surface" }
+
+### Empty hold reason returns 400
+POST {{baseUrl}}/api/v1/order-steps/{{queue.response.body.$[0].id}}/hold
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "reason": "" }
+
+### Unknown step returns 404
+POST {{baseUrl}}/api/v1/order-steps/999999/start
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Without a token returns 401
+GET {{baseUrl}}/api/v1/order-steps
+Accept: application/json

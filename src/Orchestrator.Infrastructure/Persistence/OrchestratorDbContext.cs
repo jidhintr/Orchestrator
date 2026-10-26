@@ -27,7 +27,15 @@ public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext
 
     public DbSet<Order> Orders => Set<Order>();
 
-    public DbSet<OrderStage> OrderStages => Set<OrderStage>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+
+    public DbSet<OrderItemJobStep> OrderItemJobSteps => Set<OrderItemJobStep>();
+
+    public DbSet<OrderItemJobStepLog> OrderItemJobStepLogs => Set<OrderItemJobStepLog>();
+
+    public DbSet<OrderApproval> OrderApprovals => Set<OrderApproval>();
+
+    public DbSet<Priority> Priorities => Set<Priority>();
 
     public DbSet<OrderEventHistory> OrderEvents => Set<OrderEventHistory>();
 

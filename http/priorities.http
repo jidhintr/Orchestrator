@@ -1,0 +1,21 @@
+### Priorities API v1. Every request needs the access token from the sign in request below.
+### Select the "local" environment (http/http-client.env.json).
+
+### Sign in (put login and password in http/http-client.private.env.json, which is git-ignored)
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "{{login}}",
+  "password": "{{password}}"
+}
+
+### List priorities (ordered by rank; cost is added to the order total)
+GET {{baseUrl}}/api/v1/priorities
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json
+
+### Without a token returns 401
+GET {{baseUrl}}/api/v1/priorities
+Accept: application/json

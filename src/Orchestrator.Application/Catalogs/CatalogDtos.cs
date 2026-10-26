@@ -31,6 +31,8 @@ public sealed record CatalogRequest
 
     [Required, MinLength(1)]
     public required IReadOnlyList<int> JobTypeIds { get; init; }
+
+    public IReadOnlyList<int?>? StandardMinutes { get; init; }
 }
 
 public sealed record CloneCatalogRequest
@@ -42,7 +44,7 @@ public sealed record CloneCatalogRequest
     public required string Name { get; init; }
 }
 
-public sealed record CatalogStepResponse(int JobTypeId, string JobTypeName, int Sequence);
+public sealed record CatalogStepResponse(int JobTypeId, string JobTypeName, int Sequence, int? StandardMinutes);
 
 public sealed record CatalogResponse(
     int Id, string Sku, string Name, string? Description, decimal BasePrice, decimal CatalogDiscountPercent,
@@ -50,5 +52,5 @@ public sealed record CatalogResponse(
 {
     public static CatalogResponse From(Catalog c) => new(
         c.Id, c.Sku, c.Name, c.Description, c.BasePrice, c.CatalogDiscountPercent, c.LaborCost, c.CommissionPercent, c.ProfitPercent, c.IsActive,
-        [.. c.CatalogJobSteps.OrderBy(s => s.Sequence).Select(s => new CatalogStepResponse(s.JobTypeId, s.JobType!.Name, s.Sequence))]);
+        [.. c.CatalogJobSteps.OrderBy(s => s.Sequence).Select(s => new CatalogStepResponse(s.JobTypeId, s.JobType!.Name, s.Sequence, s.StandardMinutes))]);
 }

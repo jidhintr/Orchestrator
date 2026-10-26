@@ -36,6 +36,8 @@ public sealed partial class ApiContext
         ["dept:QUALITY_CHECK"] = "4",
         ["dept:CUSTOMERS"] = "6",
         ["dept:UNASSIGNED"] = "7",
+        ["dept:ESTIMATION"] = "8",
+        ["dept:OPERATIONS"] = "9",
         ["role:Super Admin"] = "1",
         ["role:Admin"] = "2",
         ["role:Manager"] = "3",
@@ -60,7 +62,7 @@ public sealed partial class ApiContext
             Mobile().Replace(text.Replace("{unique}", Unique, StringComparison.Ordinal).Replace("{id}", LastId ?? "<no id captured>", StringComparison.Ordinal), _ => NextMobile()),
             m => Aliases.TryGetValue(m.Groups[1].Value + ":" + m.Groups[2].Value, out var id) ? id : SeedIds.GetValueOrDefault(m.Groups[1].Value + ":" + m.Groups[2].Value, m.Value));
 
-    [GeneratedRegex(@"{(dept|role|user|catalog|client|order):([^{}]+)}")]
+    [GeneratedRegex(@"{(dept|role|user|catalog|client|order|step):([^{}]+)}")]
     private static partial Regex Placeholder();
 
     [GeneratedRegex("{mobile}")]

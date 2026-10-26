@@ -12,18 +12,18 @@ Feature: Orders
   Scenario: Place an order and read it back with its history
     When I send a POST request to "/api/v1/orders" with body:
       """
-      { "clientId": {client:current}, "catalogId": {catalog:current}, "quantity": 5, "priority": "High", "reference": "PO-{unique}" }
+      { "clientId": {client:current}, "items": [{ "catalogId": {catalog:current}, "quantity": 5 }], "priorityId": 2, "reference": "PO-{unique}" }
       """
     Then the response status is 201
     And the response header "Location" is present
     And the response JSON "status" is "PendingApproval"
-    And the response JSON "priority" is "High"
-    And the response JSON "quantity" is "5"
+    And the response JSON "priorityName" is "High"
+    And the response JSON "subTotal" is present
     And the response JSON "reference" is "PO-{unique}"
     And the response JSON "id" is at least 1000
     When I send a GET request to "/api/v1/orders/{id}"
     Then the response status is 200
-    And the response JSON "catalogSku" is "ORD{unique}"
+    And the response JSON "clientCompanyName" is present
     When I send a GET request to "/api/v1/orders/{id}/events"
     Then the response list contains an item where "type" is "Placed"
     When I send a GET request to "/api/v1/orders"
@@ -33,25 +33,25 @@ Feature: Orders
     Given I act as "Cal"
     When I send a POST request to "/api/v1/orders" with body:
       """
-      { "clientId": {client:current}, "catalogId": {catalog:current}, "quantity": 5 }
+      { "clientId": {client:current}, "items": [{ "catalogId": {catalog:current}, "quantity": 5 }] }
       """
     Then the response status is 201
-    And the response JSON "priority" is "Normal"
+    And the response JSON "priorityName" is "Normal"
 
   Scenario: Invalid orders are rejected
     When I send a POST request to "/api/v1/orders" with body:
       """
-      { "catalogId": {catalog:current}, "quantity": 5 }
+      { "items": [{ "catalogId": {catalog:current}, "quantity": 5 }] }
       """
     Then the response is a problem with status 400
     When I send a POST request to "/api/v1/orders" with body:
       """
-      { "clientId": {client:current}, "catalogId": 999999, "quantity": 5 }
+      { "clientId": {client:current}, "items": [{ "catalogId": 999999, "quantity": 5 }] }
       """
     Then the response is a problem with status 400
     When I send a POST request to "/api/v1/orders" with body:
       """
-      { "clientId": {client:current}, "catalogId": {catalog:current}, "priority": "Urgent", "quantity": 5 }
+      { "clientId": {client:current}, "items": [{ "catalogId": {catalog:current}, "quantity": 5 }], "priorityId": 999999 }
       """
     Then the response is a problem with status 400
 
@@ -62,7 +62,7 @@ Feature: Orders
       """
     And I send a POST request to "/api/v1/orders" with body:
       """
-      { "clientId": {client:current}, "catalogId": {catalog:current}, "quantity": 5 }
+      { "clientId": {client:current}, "items": [{ "catalogId": {catalog:current}, "quantity": 5 }] }
       """
     Then the response is a problem with status 409
 
@@ -100,20 +100,20 @@ Feature: Orders
     And I act as "Ann"
     When I send a POST request to "/api/v1/orders/{order:current}/priority-requests" with body:
       """
-      { "priority": "UltraHigh", "reason": "Rush job" }
+      { "priorityId": 4, "reason": "Rush job" }
       """
     Then the response status is 201
     And the response JSON "type" is "PriorityChangeRequested"
-    And the response JSON "toValue" is "UltraHigh"
+    And the response JSON "toValue" is "Ultra High"
     When I send a GET request to "/api/v1/orders/{order:current}"
-    Then the response JSON "priority" is "Normal"
+    Then the response JSON "priorityName" is "Normal"
 
   Scenario: A priority change to the current priority is rejected
     Given an order is placed for that client and catalog
     And I act as "Ann"
     When I send a POST request to "/api/v1/orders/{order:current}/priority-requests" with body:
       """
-      { "priority": "Normal" }
+      { "priorityId": 1 }
       """
     Then the response is a problem with status 400
 
@@ -123,7 +123,7 @@ Feature: Orders
     And I act as "Cli"
     When I send a POST request to "/api/v1/orders" with body:
       """
-      { "catalogId": {catalog:current}, "quantity": 5 }
+      { "items": [{ "catalogId": {catalog:current}, "quantity": 5 }] }
       """
     Then the response status is 201
     And the response JSON "clientId" is "{client:Cli}"
@@ -154,23 +154,23 @@ Feature: Orders
   Scenario: The quote is computed at placement from the catalog base price and discounts
     When I send a POST request to "/api/v1/orders" with body:
       """
-      { "clientId": {client:current}, "catalogId": {catalog:current}, "quantity": 10 }
+      { "clientId": {client:current}, "items": [{ "catalogId": {catalog:current}, "quantity": 10 }] }
       """
     Then the response status is 201
-    And the response JSON "quantity" is "10"
-    And the response JSON "quotedTotal" is present
+    And the response JSON "subTotal" is present
+    And the response JSON "netAmount" is present
     And the response body does not contain "laborCost"
     And the response body does not contain "commission"
 
   Scenario: Invalid quantity or past due date is rejected
     When I send a POST request to "/api/v1/orders" with body:
       """
-      { "clientId": {client:current}, "catalogId": {catalog:current}, "quantity": 0 }
+      { "clientId": {client:current}, "items": [{ "catalogId": {catalog:current}, "quantity": 0 }] }
       """
     Then the response is a problem with status 400
     When I send a POST request to "/api/v1/orders" with body:
       """
-      { "clientId": {client:current}, "catalogId": {catalog:current}, "quantity": 1, "dueDate": "2020-01-01" }
+      { "clientId": {client:current}, "items": [{ "catalogId": {catalog:current}, "quantity": 1 }], "commitmentDeadline": "2020-01-01" }
       """
     Then the response is a problem with status 400
 
@@ -181,7 +181,7 @@ Feature: Orders
       { "total": 123.45, "reason": "Bulk rate" }
       """
     Then the response status is 200
-    And the response JSON "quotedTotal" is "123.45"
+    And the response JSON "netAmount" is "123.45"
     When I send a GET request to "/api/v1/orders/{order:current}/events"
     Then the response list contains an item where "type" is "QuoteAdjusted"
 
@@ -193,3 +193,22 @@ Feature: Orders
       { "total": 1, "reason": "Goodwill" }
       """
     Then the response is a problem with status 403
+
+  Scenario: Priorities are listed by rank
+    When I send a GET request to "/api/v1/priorities"
+    Then the response status is 200
+    And the response list contains an item where "name" is "Ultra High"
+
+  Scenario: The same catalog twice in one order is rejected
+    When I send a POST request to "/api/v1/orders" with body:
+      """
+      { "clientId": {client:current}, "items": [{ "catalogId": {catalog:current}, "quantity": 1 }, { "catalogId": {catalog:current}, "quantity": 2 }] }
+      """
+    Then the response is a problem with status 400
+
+  Scenario: An order without items is rejected
+    When I send a POST request to "/api/v1/orders" with body:
+      """
+      { "clientId": {client:current}, "items": [] }
+      """
+    Then the response is a problem with status 400

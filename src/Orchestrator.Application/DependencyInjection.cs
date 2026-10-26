@@ -21,6 +21,8 @@ public static class DependencyInjection
         .AddScoped<CatalogService>()
         .AddScoped<ClientService>()
         .AddScoped<OrderService>()
+        .AddScoped<OrderApprovalService>()
+        .AddScoped<OrderStepService>()
         .AddScoped<ApprovalChainService>()
         .AddScoped<JobTypeService>()
         .AddScoped<CurrentUser>()

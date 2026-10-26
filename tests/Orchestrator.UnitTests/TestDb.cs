@@ -65,10 +65,19 @@ internal static class TestDb
 
     public static Order AddOrder(this OrchestratorDbContext db, int catalogId, int? clientId = null)
     {
-        var order = new Order { CatalogId = catalogId, ClientId = clientId ?? db.AddClient($"c{Guid.NewGuid():N}@test.local").Id };
+        var order = new Order { ClientId = clientId ?? db.AddClient($"c{Guid.NewGuid():N}@test.local").Id, PriorityId = SystemIds.NormalPriority };
+        order.Items.Add(new OrderItem { CatalogId = catalogId, CatalogSku = "SKU", CatalogName = "Catalog", Quantity = 1 });
         db.Orders.Add(order);
         db.SaveChanges();
         return order;
+    }
+
+    public static void AddChain(this OrchestratorDbContext db, Catalog catalog, params int[] departmentIds)
+    {
+        var chain = new ApprovalChain { Name = $"Chain {catalog.Sku}", CatalogId = catalog.Id };
+        chain.Stages.AddRange(departmentIds.Select((d, i) => new ApprovalChainStage { DepartmentId = d, Sequence = i + 1 }));
+        db.ApprovalChains.Add(chain);
+        db.SaveChanges();
     }
 
     public static Catalog AddCatalog(this OrchestratorDbContext db, string sku, params JobType[] steps)

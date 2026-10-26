@@ -33,13 +33,27 @@ Content-Type: application/json
 
 { "sku": "ORDERS-DEMO", "name": "Orders demo", "jobTypeIds": [1, 2, 4] }
 
-### Place an order (stages are copied from the catalog, status starts PendingApproval)
+### Give the catalog one approval stage (Accounting, department 3) so new orders wait for approval
+POST {{baseUrl}}/api/v1/approval-chains
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "name": "Orders demo chain", "catalogId": {{catalog.response.body.$.id}}, "departmentIds": [3] }
+
+### Place an order (each item snapshots the catalog price and gets its job steps; status starts PendingApproval; priorityId 2 = High)
 # @name order
 POST {{baseUrl}}/api/v1/orders
 Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
-{ "clientId": {{client.response.body.$.id}}, "catalogId": {{catalog.response.body.$.id}}, "quantity": 500, "dueDate": "2030-01-31", "reference": "PO-1001", "notes": "Matt lamination", "priority": "High" }
+{
+  "clientId": {{client.response.body.$.id}},
+  "items": [{ "catalogId": {{catalog.response.body.$.id}}, "quantity": 500 }],
+  "priorityId": 2,
+  "commitmentDeadline": "2030-01-31",
+  "reference": "PO-1001",
+  "notes": "Matt lamination"
+}
 
 ### List orders
 GET {{baseUrl}}/api/v1/orders
@@ -68,21 +82,41 @@ POST {{baseUrl}}/api/v1/orders
 Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
-{ "clientId": {{client.response.body.$.id}}, "catalogId": {{catalog.response.body.$.id}}, "quantity": 0 }
+{ "clientId": {{client.response.body.$.id}}, "items": [{ "catalogId": {{catalog.response.body.$.id}}, "quantity": 0 }] }
 
 ### Request a priority change (logged only; the priority stays until Estimation approves)
 POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/priority-requests
 Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
-{ "priority": "UltraHigh", "reason": "Client needs it sooner" }
+{ "priorityId": 4, "reason": "Client needs it sooner" }
 
 ### Same priority returns 400
 POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/priority-requests
 Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
-{ "priority": "High" }
+{ "priorityId": 2 }
+
+### Approvals of the order, one row per approval stage
+GET {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/approvals
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json
+
+### Approve the next stage (manager of that department, or an admin; the last approval starts the assembly line)
+POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/approvals/approve
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Approving again returns 409 (nothing is waiting)
+POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/approvals/approve
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Deny needs a reason (an empty one returns 400; a valid denial cancels the order back to Estimation)
+POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/approvals/deny
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "reason": "" }
 
 ### Cancel the order (returns to the Estimation department)
 POST {{baseUrl}}/api/v1/orders/{{order.response.body.$.id}}/cancel
@@ -103,14 +137,14 @@ POST {{baseUrl}}/api/v1/orders
 Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
-{ "clientId": {{client.response.body.$.id}}, "catalogId": 999999, "quantity": 1 }
+{ "clientId": {{client.response.body.$.id}}, "items": [{ "catalogId": 999999, "quantity": 1 }] }
 
 ### Missing clientId returns 400 for staff
 POST {{baseUrl}}/api/v1/orders
 Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
-{ "catalogId": {{catalog.response.body.$.id}}, "quantity": 1 }
+{ "items": [{ "catalogId": {{catalog.response.body.$.id}}, "quantity": 1 }] }
 
 ### Unknown id returns 404
 GET {{baseUrl}}/api/v1/orders/999999

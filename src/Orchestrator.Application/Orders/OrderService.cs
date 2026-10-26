@@ -14,6 +14,12 @@ public sealed class OrderService(IAppDbContext db, CurrentUser currentUser)
         return [.. (await Scoped(actor).AsNoTracking().OrderByDescending(o => o.Id).ToListAsync(cancellationToken)).Select(OrderResponse.From)];
     }
 
+    public async Task<IReadOnlyList<PriorityResponse>> PrioritiesAsync(CancellationToken cancellationToken)
+    {
+        await currentUser.RequireAsync(Rank.Employee, cancellationToken);
+        return [.. (await db.Priorities.AsNoTracking().OrderBy(p => p.Rank).ToListAsync(cancellationToken)).Select(PriorityResponse.From)];
+    }
+
     public async Task<OrderResponse> GetAsync(int id, CancellationToken cancellationToken) =>
         OrderResponse.From(await FindAsync(await currentUser.RequireAsync(Rank.Employee, cancellationToken), id, cancellationToken));
 
@@ -37,30 +43,84 @@ public sealed class OrderService(IAppDbContext db, CurrentUser currentUser)
             throw new ConflictException($"Client '{client.Id}' cannot place orders ({client.Status}).");
         }
 
-        var catalog = await db.Catalogs.Include(c => c.CatalogJobSteps).SingleOrDefaultAsync(c => c.Id == request.CatalogId && c.IsActive, cancellationToken)
-            ?? throw new BadRequestException($"Catalog '{request.CatalogId}' does not exist or is deactivated.");
-
-        if (request.DueDate < DateOnly.FromDateTime(DateTime.UtcNow))
+        if (request.CommitmentDeadline < DateOnly.FromDateTime(DateTime.UtcNow))
         {
-            throw new BadRequestException("dueDate cannot be in the past.");
+            throw new BadRequestException("commitmentDeadline cannot be in the past.");
+        }
+
+        var catalogIds = request.Items.Select(i => i.CatalogId).ToList();
+        if (catalogIds.Distinct().Count() != catalogIds.Count)
+        {
+            throw new BadRequestException("A catalog can appear only once per order.");
+        }
+
+        var priority = await db.Priorities.SingleOrDefaultAsync(p => p.Id == request.PriorityId && p.IsActive, cancellationToken)
+            ?? throw new BadRequestException($"Priority {request.PriorityId} does not exist or is deactivated.");
+        var catalogs = await db.Catalogs.Include(c => c.CatalogJobSteps).ThenInclude(s => s.JobType)
+            .Where(c => catalogIds.Contains(c.Id) && c.IsActive).ToDictionaryAsync(c => c.Id, cancellationToken);
+        if (catalogs.Count != catalogIds.Count)
+        {
+            throw new BadRequestException("Every catalog must exist and be active.");
         }
 
         var order = new Order
         {
             ClientId = client.Id,
-            CatalogId = catalog.Id,
-            Priority = request.Priority,
-            Quantity = request.Quantity,
-            DueDate = request.DueDate,
+            PriorityId = priority.Id,
+            PriorityCost = priority.Cost,
+            CommitmentDeadline = request.CommitmentDeadline,
             Reference = request.Reference?.Trim(),
             Notes = request.Notes?.Trim(),
-            UnitPrice = catalog.BasePrice,
-            CatalogDiscountPercent = catalog.CatalogDiscountPercent,
-            ClientDiscountPercent = client.TierDiscountPercent,
-            QuotedTotal = Math.Round(catalog.BasePrice * request.Quantity * (1 - catalog.CatalogDiscountPercent / 100m) * (1 - client.TierDiscountPercent / 100m), 2, MidpointRounding.AwayFromZero),
         };
-        order.Stages.AddRange(catalog.CatalogJobSteps.Select(s => new OrderStage { JobTypeId = s.JobTypeId, Sequence = s.Sequence }));
-        order.Events.Add(new OrderEventHistory { Type = OrderEventType.Placed, ActorUserId = actor.Id, ToValue = order.Status.ToString() });
+        foreach (var line in request.Items)
+        {
+            var catalog = catalogs[line.CatalogId];
+            var gross = catalog.BasePrice * line.Quantity;
+            var item = new OrderItem
+            {
+                CatalogId = catalog.Id,
+                CatalogSku = catalog.Sku,
+                CatalogName = catalog.Name,
+                Quantity = line.Quantity,
+                UnitPrice = catalog.BasePrice,
+                CatalogDiscountPercent = catalog.CatalogDiscountPercent,
+                ClientDiscountPercent = client.TierDiscountPercent,
+                LineNet = Math.Round(gross * (1 - catalog.CatalogDiscountPercent / 100m) * (1 - client.TierDiscountPercent / 100m), 2, MidpointRounding.AwayFromZero),
+            };
+            item.Steps.AddRange(catalog.CatalogJobSteps.Select(s => new OrderItemJobStep
+            {
+                JobTypeId = s.JobTypeId,
+                JobTypeName = s.JobType!.Name,
+                SortOrder = s.Sequence,
+                DepartmentId = s.JobType.DepartmentId,
+                StandardMinutes = s.StandardMinutes,
+                CanReject = s.Sequence > 1,
+                LaborCost = s.JobType.LaborCost ?? catalog.LaborCost,
+                CommissionPercent = s.JobType.CommissionPercent ?? catalog.CommissionPercent,
+                ProfitPercent = s.JobType.ProfitPercent ?? catalog.ProfitPercent,
+            }));
+            order.Items.Add(item);
+            order.SubTotal += gross;
+        }
+
+        var lines = order.Items.Sum(i => i.LineNet);
+        order.DiscountTotal = order.SubTotal - lines;
+        order.NetAmount = lines + priority.Cost;
+        order.Events.Add(new OrderEventHistory { Type = OrderEventType.Placed, ActorUserId = actor.Id, ToValue = nameof(OrderStatus.PendingApproval) });
+        order.Approvals.AddRange((await ApprovalDepartmentsAsync(catalogIds, cancellationToken)).Select((departmentId, index) => new OrderApproval { DepartmentId = departmentId, Sequence = index + 1 }));
+        if (order.Approvals.Count == 0)
+        {
+            OrderFlow.Start(order, actor.Id, DateTime.UtcNow);
+            order.Events.Add(new OrderEventHistory
+            {
+                Type = OrderEventType.ApprovalApproved,
+                ActorUserId = actor.Id,
+                FromValue = nameof(OrderStatus.PendingApproval),
+                ToValue = nameof(OrderStatus.InProgress),
+                Reason = "No approval stages: approved automatically",
+            });
+        }
+
         db.Orders.Add(order);
         await db.SaveChangesAsync(cancellationToken);
         return await GetAsync(order.Id, cancellationToken);
@@ -106,11 +166,11 @@ public sealed class OrderService(IAppDbContext db, CurrentUser currentUser)
             OrderId = id,
             Type = OrderEventType.QuoteAdjusted,
             ActorUserId = actor.Id,
-            FromValue = order.QuotedTotal.ToString("F2", CultureInfo.InvariantCulture),
+            FromValue = order.NetAmount.ToString("F2", CultureInfo.InvariantCulture),
             ToValue = total.ToString("F2", CultureInfo.InvariantCulture),
             Reason = request.Reason.Trim(),
         });
-        order.QuotedTotal = total;
+        order.NetAmount = total;
         await db.SaveChangesAsync(cancellationToken);
         return OrderResponse.From(order);
     }
@@ -120,9 +180,11 @@ public sealed class OrderService(IAppDbContext db, CurrentUser currentUser)
         var actor = await currentUser.RequireAsync(Rank.Manager, cancellationToken);
         var order = await FindAsync(actor, id, cancellationToken);
         EnsureOpen(order, "changed");
-        if (order.Priority == request.Priority)
+        var priority = await db.Priorities.SingleOrDefaultAsync(p => p.Id == request.PriorityId && p.IsActive, cancellationToken)
+            ?? throw new BadRequestException($"Priority {request.PriorityId} does not exist or is deactivated.");
+        if (order.PriorityId == priority.Id)
         {
-            throw new BadRequestException($"The order already has priority {order.Priority}.");
+            throw new BadRequestException($"The order already has priority {priority.Name}.");
         }
 
         var requested = new OrderEventHistory
@@ -130,8 +192,8 @@ public sealed class OrderService(IAppDbContext db, CurrentUser currentUser)
             OrderId = id,
             Type = OrderEventType.PriorityChangeRequested,
             ActorUserId = actor.Id,
-            FromValue = order.Priority.ToString(),
-            ToValue = request.Priority.ToString(),
+            FromValue = order.Priority!.Name,
+            ToValue = priority.Name,
             Reason = request.Reason?.Trim(),
         };
         db.OrderEvents.Add(requested);
@@ -147,9 +209,18 @@ public sealed class OrderService(IAppDbContext db, CurrentUser currentUser)
         }
     }
 
+    private async Task<IReadOnlyList<int>> ApprovalDepartmentsAsync(List<int> catalogIds, CancellationToken cancellationToken)
+    {
+        var chains = await db.ApprovalChains.Include(c => c.Stages)
+            .Where(c => c.IsActive && (c.IsDefault || (c.CatalogId != null && catalogIds.Contains(c.CatalogId.Value)))).ToListAsync(cancellationToken);
+        var fallback = chains.Single(c => c.IsDefault);
+        return [.. catalogIds.Select(id => chains.FirstOrDefault(c => c.CatalogId == id) ?? fallback).Distinct()
+            .SelectMany(c => c.Stages.OrderBy(s => s.Sequence)).Select(s => s.DepartmentId).Distinct()];
+    }
+
     private IQueryable<Order> Scoped(Actor actor)
     {
-        var orders = db.Orders.Include(o => o.Client).Include(o => o.Catalog).Include(o => o.Stages).ThenInclude(s => s.JobType).AsQueryable();
+        var orders = db.Detailed();
         return actor.IsClient ? orders.Where(o => o.Client!.UserId == actor.Id) : orders;
     }
 

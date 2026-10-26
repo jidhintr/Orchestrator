@@ -17,7 +17,7 @@ public sealed class CatalogService(IAppDbContext db)
     {
         var catalog = new Catalog { Sku = request.Sku.Trim(), Name = request.Name.Trim() };
         Apply(catalog, request);
-        await SetStepsAsync(catalog, request.JobTypeIds, cancellationToken);
+        await SetStepsAsync(catalog, request.JobTypeIds, request.StandardMinutes, cancellationToken);
         db.Catalogs.Add(catalog);
         await db.SaveChangesAsync(cancellationToken);
         return await GetAsync(catalog.Id, cancellationToken);
@@ -32,7 +32,7 @@ public sealed class CatalogService(IAppDbContext db)
         Apply(catalog, request);
         db.CatalogJobSteps.RemoveRange(catalog.CatalogJobSteps);
         catalog.CatalogJobSteps.Clear();
-        await SetStepsAsync(catalog, request.JobTypeIds, cancellationToken);
+        await SetStepsAsync(catalog, request.JobTypeIds, request.StandardMinutes, cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
         return await GetAsync(id, cancellationToken);
     }
@@ -66,7 +66,7 @@ public sealed class CatalogService(IAppDbContext db)
             CommissionPercent = source.CommissionPercent,
             ProfitPercent = source.ProfitPercent,
         };
-        clone.CatalogJobSteps.AddRange(source.CatalogJobSteps.Select(s => new CatalogJobStep { JobTypeId = s.JobTypeId, Sequence = s.Sequence }));
+        clone.CatalogJobSteps.AddRange(source.CatalogJobSteps.Select(s => new CatalogJobStep { JobTypeId = s.JobTypeId, Sequence = s.Sequence, StandardMinutes = s.StandardMinutes }));
         db.Catalogs.Add(clone);
         await db.SaveChangesAsync(cancellationToken);
         return await GetAsync(clone.Id, cancellationToken);
@@ -82,8 +82,13 @@ public sealed class CatalogService(IAppDbContext db)
         catalog.ProfitPercent = request.ProfitPercent;
     }
 
-    private async Task SetStepsAsync(Catalog catalog, IReadOnlyList<int> jobTypeIds, CancellationToken cancellationToken)
+    private async Task SetStepsAsync(Catalog catalog, IReadOnlyList<int> jobTypeIds, IReadOnlyList<int?>? standardMinutes, CancellationToken cancellationToken)
     {
+        if (standardMinutes is not null && (standardMinutes.Count != jobTypeIds.Count || standardMinutes.Any(m => m is <= 0)))
+        {
+            throw new BadRequestException("standardMinutes must match jobTypeIds one to one, with positive values or null.");
+        }
+
         var distinct = jobTypeIds.Distinct().ToList();
         var found = await db.JobTypes.CountAsync(j => distinct.Contains(j.Id) && j.IsActive, cancellationToken);
         if (found != distinct.Count)
@@ -91,12 +96,12 @@ public sealed class CatalogService(IAppDbContext db)
             throw new BadRequestException("Every job type must exist and be active.");
         }
 
-        catalog.CatalogJobSteps.AddRange(jobTypeIds.Select((jobTypeId, index) => new CatalogJobStep { JobTypeId = jobTypeId, Sequence = index + 1 }));
+        catalog.CatalogJobSteps.AddRange(jobTypeIds.Select((jobTypeId, index) => new CatalogJobStep { JobTypeId = jobTypeId, Sequence = index + 1, StandardMinutes = standardMinutes?[index] }));
     }
 
     private async Task EnsureNoOrdersAsync(Catalog catalog, string action, CancellationToken cancellationToken)
     {
-        if (await db.Orders.AnyAsync(o => o.CatalogId == catalog.Id, cancellationToken))
+        if (await db.OrderItems.AnyAsync(i => i.CatalogId == catalog.Id, cancellationToken))
         {
             throw new ConflictException($"Catalog '{catalog.Sku}' has orders and cannot be {action}; clone it and change the clone.");
         }

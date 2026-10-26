@@ -11,5 +11,7 @@ public static class SystemIds
     public const int CustomersDepartment = 6;
     public const int UnassignedDepartment = 7;
     public const int EstimationDepartment = 8;
+    public const int OperationsDepartment = 9;
+    public const int NormalPriority = 1;
     public const int SuperAdminUser = 1;
 }

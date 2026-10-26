@@ -18,11 +18,12 @@ internal sealed class JobTypeConfiguration : IEntityTypeConfiguration<JobType>
         builder.Property(j => j.CommissionPercent).HasPrecision(5, 2);
         builder.Property(j => j.ProfitPercent).HasPrecision(5, 2);
         builder.HasIndex(j => j.Name).IsUnique();
+        builder.HasOne<Department>().WithMany().HasForeignKey(j => j.DepartmentId).OnDelete(DeleteBehavior.Restrict);
 
         // Placeholder job types pending owner confirmation; ids stay below FirstGeneratedId.
         builder.HasData(Seed(1, "Cutting"), Seed(2, "Laminating"), Seed(3, "Quality Assurance"), Seed(4, "Delivery"));
     }
 
     private static object Seed(int id, string name) =>
-        new { Id = id, Name = name, IsActive = true, InsertedAt = SeededAt, LastUpdatedAt = SeededAt };
+        new { Id = id, Name = name, DepartmentId = SystemIds.OperationsDepartment, IsActive = true, InsertedAt = SeededAt, LastUpdatedAt = SeededAt };
 }

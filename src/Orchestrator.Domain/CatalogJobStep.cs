@@ -9,4 +9,6 @@ public sealed class CatalogJobStep : BaseEntity
     public JobType? JobType { get; set; }
 
     public int Sequence { get; set; }
+
+    public int? StandardMinutes { get; set; }
 }

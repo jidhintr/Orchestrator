@@ -46,29 +46,47 @@ export interface Client {
 
 export type ClientInput = Omit<Client, 'id' | 'status' | 'tierDiscountPercent' | 'isActive' | 'userId'> & { userId?: number | null }
 
-export type OrderPriority = 'Normal' | 'High' | 'Premium' | 'UltraHigh'
 export type OrderStatus = 'PendingApproval' | 'InProgress' | 'OnHold' | 'Completed' | 'Cancelled'
+export type StepStatus = 'Waiting' | 'Ready' | 'InProgress' | 'OnHold' | 'Completed' | 'Rejected'
+
+export interface Priority {
+  id: number
+  name: string
+  rank: number
+  cost: number
+  isActive: boolean
+}
+
+export interface OrderItem {
+  id: number
+  catalogId: number
+  catalogSku: string
+  catalogName: string
+  quantity: number
+  unitPrice: number
+  catalogDiscountPercent: number
+  clientDiscountPercent: number
+  lineNet: number
+  steps: { id: number; jobTypeId: number; jobTypeName: string; sortOrder: number; status: StepStatus }[]
+}
 
 export interface Order {
   id: number
   clientId: number
   clientCompanyName: string
-  catalogId: number
-  catalogSku: string
-  catalogName: string
-  quantity: number
-  dueDate: string | null
+  priorityId: number
+  priorityName: string
+  priorityCost: number
+  commitmentDeadline: string | null
   reference: string | null
   notes: string | null
-  unitPrice: number
-  catalogDiscountPercent: number
-  clientDiscountPercent: number
-  quotedTotal: number
-  priority: OrderPriority
+  subTotal: number
+  discountTotal: number
+  netAmount: number
   status: OrderStatus
   returnedToDepartmentId: number | null
   placedAt: string
-  stages: { jobTypeId: number; jobTypeName: string; sequence: number; enteredAt: string | null; exitedAt: string | null }[]
+  items: OrderItem[]
 }
 
 export interface OrderEvent {
@@ -295,10 +313,11 @@ export const api = {
   orders: () => call<Order[]>('/orders'),
   order: (id: number) => call<Order>(`/orders/${id}`),
   orderEvents: (id: number) => call<OrderEvent[]>(`/orders/${id}/events`),
-  placeOrder: (input: { clientId?: number; catalogId: number; quantity: number; dueDate?: string; reference?: string; notes?: string; priority: OrderPriority }) => call<Order>('/orders', 'POST', input),
+  priorities: () => call<Priority[]>('/priorities'),
+  placeOrder: (input: { clientId?: number; items: { catalogId: number; quantity: number }[]; priorityId: number; commitmentDeadline?: string; reference?: string; notes?: string }) => call<Order>('/orders', 'POST', input),
   adjustOrderQuote: (id: number, total: number, reason: string) => call<Order>(`/orders/${id}/quote`, 'POST', { total, reason }),
   cancelOrder: (id: number, reason: string) => call<Order>(`/orders/${id}/cancel`, 'POST', { reason }),
-  requestOrderPriority: (id: number, priority: OrderPriority, reason?: string) => call<OrderEvent>(`/orders/${id}/priority-requests`, 'POST', { priority, reason }),
+  requestOrderPriority: (id: number, priorityId: number, reason?: string) => call<OrderEvent>(`/orders/${id}/priority-requests`, 'POST', { priorityId, reason }),
 
   jobTypes: () => call<JobType[]>('/job-types'),
   jobType: (id: number) => call<JobType>(`/job-types/${id}`),
