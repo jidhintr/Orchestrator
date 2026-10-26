@@ -24,8 +24,9 @@ export function setup() {
     shippingAddress: '1 Main St',
   }), json);
   const catalogRes = api.post(`${API}/catalogs`, JSON.stringify({ sku: `K6ORD${suffix}`, name: `K6 Orders ${suffix}`, jobTypeIds: [1, 2, 4] }), json);
+  const approveRes = catalogRes.status === 201 ? api.post(`${API}/catalogs/${catalogRes.json('id')}/approve`) : catalogRes;
   const chainRes = catalogRes.status === 201 ? api.post(`${API}/approval-chains`, JSON.stringify({ name: `K6 Orders ${suffix}`, catalogId: catalogRes.json('id'), departmentIds: [3] }), json) : catalogRes;
-  if (clientRes.status !== 201 || catalogRes.status !== 201 || chainRes.status !== 201) {
+  if (clientRes.status !== 201 || catalogRes.status !== 201 || approveRes.status !== 200 || chainRes.status !== 201) {
     throw new Error(`Setup failed: client ${clientRes.status}, catalog ${catalogRes.status}, chain ${chainRes.status}.`);
   }
   return { token, clientId: clientRes.json('id'), catalogId: catalogRes.json('id') };

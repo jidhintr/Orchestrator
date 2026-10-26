@@ -9,12 +9,14 @@ public class CatalogServiceTests
 {
     private readonly OrchestratorDbContext _db = TestDb.Create();
     private readonly CatalogService _catalogs;
+    private readonly User _admin;
     private readonly JobType _cut;
     private readonly JobType _fold;
 
     public CatalogServiceTests()
     {
-        _catalogs = new CatalogService(_db);
+        _admin = _db.AddUser("admin", [SystemIds.UnassignedDepartment], SystemIds.AdminRole);
+        _catalogs = new CatalogService(_db, _db.As(_admin.Id));
         _cut = _db.AddJobType("Cut");
         _fold = _db.AddJobType("Fold");
     }
@@ -140,6 +142,46 @@ public class CatalogServiceTests
         Assert.Equal(source.BasePrice, clone.BasePrice);
         Assert.Equal(source.Description, clone.Description);
         Assert.Equal(source.Steps, clone.Steps);
+    }
+
+    [Fact]
+    public async Task Clone_keeps_category_and_dates_links_the_source_and_starts_unapproved()
+    {
+        var category = _db.AddCategory("Bags");
+        var source = await _catalogs.CreateAsync(Request() with { CategoryId = category.Id, AvailableFrom = new DateOnly(2030, 1, 1), AvailableTo = new DateOnly(2030, 2, 1) }, default);
+        await _catalogs.ApproveAsync(source.Id, default);
+        var clone = await _catalogs.CloneAsync(source.Id, new CloneCatalogRequest { Sku = "BOOK-C", Name = "Copy" }, default);
+        Assert.Equal((category.Id, "Bags", source.AvailableFrom, source.AvailableTo, source.Id, false), (clone.CategoryId, clone.CategoryName, clone.AvailableFrom, clone.AvailableTo, clone.BasedOnCatalogId, clone.IsApproved));
+    }
+
+    [Fact]
+    public async Task Create_starts_unapproved_and_approve_records_who_and_when()
+    {
+        var created = await _catalogs.CreateAsync(Request(), default);
+        Assert.False(created.IsApproved);
+        var approved = await _catalogs.ApproveAsync(created.Id, default);
+        Assert.True(approved.IsApproved);
+        Assert.NotNull(approved.ApprovedAt);
+        Assert.Equal(_admin.Id, _db.Catalogs.Single(c => c.Id == created.Id).ApprovedByUserId);
+        await Assert.ThrowsAsync<ConflictException>(() => _catalogs.ApproveAsync(created.Id, default));
+    }
+
+    [Fact]
+    public async Task Approve_needs_an_admin_and_unknown_is_not_found()
+    {
+        var created = await _catalogs.CreateAsync(Request(), default);
+        var manager = _db.AddUser("boss", [SystemIds.UnassignedDepartment], SystemIds.ManagerRole);
+        await Assert.ThrowsAsync<ForbiddenException>(() => new CatalogService(_db, _db.As(manager.Id)).ApproveAsync(created.Id, default));
+        await Assert.ThrowsAsync<NotFoundException>(() => _catalogs.ApproveAsync(9999, default));
+    }
+
+    [Fact]
+    public async Task Create_rejects_an_unknown_or_deactivated_category_and_reversed_dates()
+    {
+        var off = _db.AddCategory("Old", active: false);
+        await Assert.ThrowsAsync<BadRequestException>(() => _catalogs.CreateAsync(Request() with { CategoryId = 9999 }, default));
+        await Assert.ThrowsAsync<BadRequestException>(() => _catalogs.CreateAsync(Request() with { CategoryId = off.Id }, default));
+        await Assert.ThrowsAsync<BadRequestException>(() => _catalogs.CreateAsync(Request() with { AvailableFrom = new DateOnly(2030, 2, 1), AvailableTo = new DateOnly(2030, 1, 1) }, default));
     }
 
     [Fact]

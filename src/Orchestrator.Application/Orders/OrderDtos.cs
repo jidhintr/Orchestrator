@@ -87,12 +87,12 @@ public sealed record OrderItemResponse(
 }
 
 public sealed record OrderResponse(
-    int Id, int ClientId, string ClientCompanyName, int PriorityId, string PriorityName, decimal PriorityCost,
+    int Id, string OrderNo, int ClientId, string ClientCompanyName, int PriorityId, string PriorityName, decimal PriorityCost,
     DateOnly? CommitmentDeadline, string? Reference, string? Notes, decimal SubTotal, decimal DiscountTotal, decimal NetAmount,
     OrderStatus Status, int? ReturnedToDepartmentId, DateTime PlacedAt, IReadOnlyList<OrderItemResponse> Items)
 {
     public static OrderResponse From(Order o) => new(
-        o.Id, o.ClientId, o.Client!.CompanyName, o.PriorityId, o.Priority!.Name, o.PriorityCost,
+        o.Id, o.OrderNo, o.ClientId, o.Client!.CompanyName, o.PriorityId, o.Priority!.Name, o.PriorityCost,
         o.CommitmentDeadline, o.Reference, o.Notes, o.SubTotal, o.DiscountTotal, o.NetAmount,
         o.Status, o.ReturnedToDepartmentId, o.InsertedAt, [.. o.Items.OrderBy(i => i.Id).Select(OrderItemResponse.From)]);
 }

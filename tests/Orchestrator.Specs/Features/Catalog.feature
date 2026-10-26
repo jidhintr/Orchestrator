@@ -104,3 +104,58 @@ Feature: Catalog management
   Scenario: Unknown catalog returns 404
     When I send a GET request to "/api/v1/catalogs/999999"
     Then the response is a problem with status 404
+
+  Scenario: A new catalog starts unapproved and an admin approves it
+    Given a catalog with SKU "APR{unique}" exists
+    When I send a GET request to "/api/v1/catalogs/{id}"
+    Then the response JSON "isApproved" is "false"
+    When I send a POST request to "/api/v1/catalogs/{id}/approve"
+    Then the response status is 200
+    And the response JSON "isApproved" is "true"
+    And the response JSON "approvedAt" is present
+    When I send a POST request to "/api/v1/catalogs/{id}/approve"
+    Then the response is a problem with status 409
+
+  Scenario: Only admins approve catalogs
+    Given a user "Ann" exists in the departments "UNASSIGNED" with the roles "Manager"
+    And I act as "Ann"
+    When I send a POST request to "/api/v1/catalogs/1/approve"
+    Then the response is a problem with status 403
+
+  Scenario: Approving an unknown catalog returns 404
+    When I send a POST request to "/api/v1/catalogs/999999/approve"
+    Then the response is a problem with status 404
+
+  Scenario: A catalog carries a category and an availability window
+    Given a catalog category "Seasonal {unique}" exists
+    When I send a POST request to "/api/v1/catalogs" with body:
+      """
+      { "sku": "SEA{unique}", "name": "Seasonal {unique}", "categoryId": {id}, "availableFrom": "2030-11-01", "availableTo": "2030-12-31", "jobTypeIds": [1] }
+      """
+    Then the response status is 201
+    And the response JSON "categoryName" is "Seasonal {unique}"
+    And the response JSON "availableFrom" is "2030-11-01"
+    And the response JSON "availableTo" is "2030-12-31"
+
+  Scenario: A reversed window or an unknown category is rejected
+    When I send a POST request to "/api/v1/catalogs" with body:
+      """
+      { "sku": "REV{unique}", "name": "Reversed {unique}", "availableFrom": "2030-12-31", "availableTo": "2030-11-01", "jobTypeIds": [1] }
+      """
+    Then the response is a problem with status 400
+    When I send a POST request to "/api/v1/catalogs" with body:
+      """
+      { "sku": "CAT{unique}", "name": "No category {unique}", "categoryId": 999999, "jobTypeIds": [1] }
+      """
+    Then the response is a problem with status 400
+
+  Scenario: A clone remembers its source and needs its own approval
+    Given a catalog with SKU "BAG{unique}" exists
+    When I send a POST request to "/api/v1/catalogs/{id}/approve"
+    And I send a POST request to "/api/v1/catalogs/{id}/clone" with body:
+      """
+      { "sku": "CLN{unique}", "name": "Clone {unique}" }
+      """
+    Then the response status is 201
+    And the response JSON "basedOnCatalogId" is present
+    And the response JSON "isApproved" is "false"

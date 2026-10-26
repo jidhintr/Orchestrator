@@ -18,5 +18,19 @@ public sealed class Catalog : BaseEntity
 
     public decimal ProfitPercent { get; set; }
 
+    public int? CategoryId { get; set; }
+
+    public Category? Category { get; set; }
+
+    public DateOnly? AvailableFrom { get; set; }
+
+    public DateOnly? AvailableTo { get; set; }
+
+    public int? BasedOnCatalogId { get; set; }
+
+    public DateTime? ApprovedAt { get; set; }
+
+    public int? ApprovedByUserId { get; set; }
+
     public List<CatalogJobStep> CatalogJobSteps { get; } = [];
 }

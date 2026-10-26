@@ -25,7 +25,7 @@ public sealed record StepReasonRequest
 }
 
 public sealed record StepResponse(
-    int Id, int OrderId, int OrderItemId, string ClientCompanyName, string CatalogName, string PriorityName, int PriorityRank,
+    int Id, int OrderId, string OrderNo, int OrderItemId, string ClientCompanyName, string CatalogName, string PriorityName, int PriorityRank,
     int JobTypeId, string JobTypeName, int SortOrder, int DepartmentId, string DepartmentName, StepStatus Status, int Progress, bool CanReject,
     int? AssignedUserId, int? CompletedByUserId, DateTime? ReadyAt, DateTime? StartedAt, DateTime? CompletedAt, int? StandardMinutes,
     double? WaitMinutes, double? WorkMinutes)
@@ -34,7 +34,7 @@ public sealed record StepResponse(
     {
         var order = s.OrderItem!.Order!;
         return new(
-            s.Id, order.Id, s.OrderItemId, order.Client!.CompanyName, s.OrderItem.CatalogName, order.Priority!.Name, order.Priority.Rank,
+            s.Id, order.Id, order.OrderNo, s.OrderItemId, order.Client!.CompanyName, s.OrderItem.CatalogName, order.Priority!.Name, order.Priority.Rank,
             s.JobTypeId, s.JobTypeName, s.SortOrder, s.DepartmentId, s.Department!.Name, s.Status, s.Progress, s.CanReject,
             s.AssignedUserId, s.CompletedByUserId, s.ReadyAt, s.StartedAt, s.CompletedAt, s.StandardMinutes,
             Minutes(s.ReadyAt, s.StartedAt ?? now), Minutes(s.StartedAt, s.CompletedAt ?? now));

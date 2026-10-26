@@ -195,8 +195,12 @@ public sealed class ApiFixture : IAsyncLifetime
     public async Task<int> NewJobType() =>
         Created(await Post("job-types", new { name = "Job " + Unique() }), r => r.Id);
 
-    public async Task<int> NewCatalog(params int[] jobTypeIds) =>
-        Created(await Post("catalogs", CatalogBody("SKU-" + Unique(), jobTypeIds.Length > 0 ? jobTypeIds : [await NewJobType()])), r => r.Id);
+    public async Task<int> NewCatalog(params int[] jobTypeIds)
+    {
+        var id = Created(await Post("catalogs", CatalogBody("SKU-" + Unique(), jobTypeIds.Length > 0 ? jobTypeIds : [await NewJobType()])), r => r.Id);
+        Assert.Equal(HttpStatusCode.OK, (await Post($"catalogs/{id}/approve")).Status);
+        return id;
+    }
 
     public static object CatalogBody(string sku, int[] jobTypeIds, decimal basePrice = 100m) => new
     {

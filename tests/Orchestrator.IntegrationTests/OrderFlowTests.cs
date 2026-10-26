@@ -16,6 +16,7 @@ public class OrderFlowTests(ApiFixture api)
             standardMinutes,
         });
         Assert.Equal(HttpStatusCode.Created, catalog.Status);
+        Assert.Equal(HttpStatusCode.OK, (await api.Post($"catalogs/{catalog.Id}/approve")).Status);
         if (chain.Length > 0)
         {
             Assert.Equal(HttpStatusCode.Created, (await api.Post("approval-chains", new { name = "Chain " + ApiFixture.Unique(), catalogId = catalog.Id, departmentIds = chain })).Status);
@@ -199,6 +200,7 @@ public class OrderFlowTests(ApiFixture api)
         Assert.Equal(Accounting, jobType["departmentId"].GetInt32());
         var catalog = await api.Post("catalogs", new { sku = "SKU-" + ApiFixture.Unique(), name = "Audit", jobTypeIds = new[] { jobType.Id, await api.NewJobType() }, standardMinutes = new int?[] { 45, null } });
         Assert.Equal(45, catalog["steps"][0].GetProperty("standardMinutes").GetInt32());
+        await api.Post($"catalogs/{catalog.Id}/approve");
         var order = await api.Post("orders", new { clientId = await api.NewClient(), items = new[] { new { catalogId = catalog.Id, quantity = 1 } } });
         var accounting = await api.NewUser([Accounting]);
         var step = await api.Get($"order-steps/{StepId(order, 0)}", accounting);

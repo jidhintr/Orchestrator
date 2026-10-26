@@ -41,7 +41,36 @@ GET {{baseUrl}}/api/v1/catalogs/{{create.response.body.$.id}}
 Authorization: Bearer {{login.response.body.$.accessToken}}
 Accept: application/json
 
-### Clone it (allowed even when the source has orders)
+### Approve it (admins only; 409 when already approved; new and cloned catalogs start unapproved and cannot be ordered)
+POST {{baseUrl}}/api/v1/catalogs/{{create.response.body.$.id}}/approve
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Create a seasonal catalog in a category (create the category first, see categories.http)
+POST {{baseUrl}}/api/v1/catalogs
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{
+  "sku": "XMAS-GIFT-WRAP",
+  "name": "Christmas gift wrap",
+  "categoryId": 1000,
+  "availableFrom": "2030-11-01",
+  "availableTo": "2030-12-31",
+  "jobTypeIds": [1, 2]
+}
+
+### Reversed availability dates return 400
+POST {{baseUrl}}/api/v1/catalogs
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "sku": "BAD-DATES", "name": "Bad dates", "availableFrom": "2030-12-31", "availableTo": "2030-11-01", "jobTypeIds": [1] }
+
+### Approving an unknown catalog returns 404
+POST {{baseUrl}}/api/v1/catalogs/999999/approve
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Clone it (allowed even when the source has orders; the clone is unapproved and remembers its source in basedOnCatalogId)
 # @name clone
 POST {{baseUrl}}/api/v1/catalogs/{{create.response.body.$.id}}/clone
 Authorization: Bearer {{login.response.body.$.accessToken}}

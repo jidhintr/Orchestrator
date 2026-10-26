@@ -21,6 +21,7 @@ Feature: Orders
     And the response JSON "subTotal" is present
     And the response JSON "reference" is "PO-{unique}"
     And the response JSON "id" is at least 1000
+    And the response JSON "orderNo" is present
     When I send a GET request to "/api/v1/orders/{id}"
     Then the response status is 200
     And the response JSON "clientCompanyName" is present
@@ -229,3 +230,29 @@ Feature: Orders
       { "clientId": {client:current}, "items": [] }
       """
     Then the response is a problem with status 400
+
+  Scenario: An unapproved catalog cannot be ordered
+    When I send a POST request to "/api/v1/catalogs" with body:
+      """
+      { "sku": "UNA{unique}", "name": "Unapproved {unique}", "jobTypeIds": [1] }
+      """
+    Then the response status is 201
+    When I send a POST request to "/api/v1/orders" with body:
+      """
+      { "clientId": {client:current}, "items": [{ "catalogId": {id}, "quantity": 1 }] }
+      """
+    Then the response is a problem with status 409
+
+  Scenario: A catalog cannot be ordered outside its availability window
+    When I send a POST request to "/api/v1/catalogs" with body:
+      """
+      { "sku": "OUT{unique}", "name": "Future {unique}", "availableFrom": "2099-01-01", "jobTypeIds": [1] }
+      """
+    Then the response status is 201
+    When I send a POST request to "/api/v1/catalogs/{id}/approve"
+    Then the response status is 200
+    When I send a POST request to "/api/v1/orders" with body:
+      """
+      { "clientId": {client:current}, "items": [{ "catalogId": {id}, "quantity": 1 }] }
+      """
+    Then the response is a problem with status 409

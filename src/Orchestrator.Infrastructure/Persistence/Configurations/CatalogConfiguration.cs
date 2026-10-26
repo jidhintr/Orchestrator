@@ -21,7 +21,22 @@ internal sealed class CatalogConfiguration : IEntityTypeConfiguration<Catalog>
         builder.Property(c => c.CommissionPercent).HasPrecision(5, 2);
         builder.Property(c => c.ProfitPercent).HasPrecision(5, 2);
         builder.HasIndex(c => c.Sku).IsUnique();
+        builder.HasOne(c => c.Category).WithMany().HasForeignKey(c => c.CategoryId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<Catalog>().WithMany().HasForeignKey(c => c.BasedOnCatalogId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<User>().WithMany().HasForeignKey(c => c.ApprovedByUserId).OnDelete(DeleteBehavior.Restrict);
         builder.HasMany(c => c.CatalogJobSteps).WithOne().HasForeignKey(s => s.CatalogId).OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+internal sealed class CategoryConfiguration : IEntityTypeConfiguration<Category>
+{
+    public void Configure(EntityTypeBuilder<Category> builder)
+    {
+        builder.ToTable("categories");
+        builder.HasKey(c => c.Id);
+        builder.Property(c => c.Name).HasMaxLength(100).UseCollation(OrchestratorDbContext.CaseInsensitive);
+        builder.Property(c => c.Description).HasMaxLength(500);
+        builder.HasIndex(c => c.Name).IsUnique();
     }
 }
 

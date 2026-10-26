@@ -17,6 +17,7 @@ const parseSpecs = (text: string) => text.split(/\r?\n/).map((l) => l.trim()).fi
   const i = l.indexOf(':')
   return i < 0 ? { name: l, value: '' } : { name: l.slice(0, i).trim(), value: l.slice(i + 1).trim() }
 })
+const today = new Date().toISOString().slice(0, 10)
 const summary = (o: Order) => o.items.map((i) => `${i.catalogName} x${i.quantity}`).join(', ')
 
 export function Orders() {
@@ -40,7 +41,7 @@ export function Orders() {
   }
 
   const all: Col<Order>[] = [
-    { key: 'id', label: 'Order', kind: 'number', locked: true, value: (o) => o.id, cell: (o) => <button className="link" onClick={() => open({ mode: 'detail', id: o.id })}>#{o.id}</button> },
+    { key: 'id', label: 'Order', kind: 'number', locked: true, value: (o) => o.id, cell: (o) => <button className="link" onClick={() => open({ mode: 'detail', id: o.id })}>{o.orderNo}</button> },
     { key: 'client', label: 'Client', kind: 'text', value: (o) => o.clientCompanyName, cell: (o) => o.clientCompanyName },
     { key: 'items', label: 'Items', kind: 'text', value: summary, cell: (o) => <span className="muted">{summary(o)}</span> },
     { key: 'net', label: 'Net amount', kind: 'number', value: (o) => o.netAmount, cell: (o) => money(o.netAmount) },
@@ -55,7 +56,7 @@ export function Orders() {
   const visible = items && grid.filter(items).filter((o) =>
     (status === 'all' || o.status === status) &&
     (priority === 'all' || String(o.priorityId) === priority) &&
-    matches(query, String(o.id), o.clientCompanyName, summary(o), o.reference))
+    matches(query, o.orderNo, o.clientCompanyName, summary(o), o.reference))
   const dirty = query !== '' || status !== 'all' || priority !== 'all' || grid.active
 
   return (
@@ -78,7 +79,7 @@ export function Orders() {
             {visible.map((o) => (
               <tr key={o.id}>
                 {grid.cells(o)}
-                <td data-label="" className="row-actions">{canManage && isOpen(o) && <button className="secondary small" aria-label={`Edit order ${o.id}`} onClick={() => setPanel({ mode: 'detail', id: o.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
+                <td data-label="" className="row-actions">{canManage && isOpen(o) && <button className="secondary small" aria-label={`Edit order ${o.orderNo}`} onClick={() => setPanel({ mode: 'detail', id: o.id, edit: true })}><Icon name="edit" />Edit</button>}</td>
               </tr>
             ))}
           </tbody>
@@ -104,7 +105,7 @@ function CreateForm({ priorities, onDone, onCancel }: { priorities: Priority[]; 
     Promise.all([isClient ? Promise.resolve([]) : api.clients(), api.catalogs()])
       .then(([c, k]) => {
         setClients(c.filter((x) => x.isActive && x.status !== 'Suspended'))
-        setCatalogs(k.filter((x) => x.isActive))
+        setCatalogs(k.filter((x) => x.isActive && x.isApproved && (!x.availableFrom || x.availableFrom <= today) && (!x.availableTo || x.availableTo >= today)))
       })
       .catch((e) => setError(message(e)))
   }, [isClient, setError])
@@ -208,7 +209,7 @@ function Detail({ id, priorities, canManage, onChanged, onCancelled, onClose }: 
 
   return (
     <>
-      <p className="meta"><strong>Order #{order.id}</strong><Badge kind={statusKind[order.status]}>{label(order.status)}</Badge><Badge kind={priorityKind(priorities.find((p) => p.id === order.priorityId)?.rank ?? 1)}>{order.priorityName}</Badge></p>
+      <p className="meta"><strong>Order {order.orderNo}</strong><Badge kind={statusKind[order.status]}>{label(order.status)}</Badge><Badge kind={priorityKind(priorities.find((p) => p.id === order.priorityId)?.rank ?? 1)}>{order.priorityName}</Badge></p>
       <Form onSubmit={save} requireChange className="ro-h" key={events.length}>
         <label>Client<input readOnly value={order.clientCompanyName} /></label>
         <label>Placed<input readOnly value={when(order.placedAt)} /></label>

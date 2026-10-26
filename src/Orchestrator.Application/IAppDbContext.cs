@@ -15,6 +15,8 @@ public interface IAppDbContext
 
     DbSet<Catalog> Catalogs { get; }
 
+    DbSet<Category> Categories { get; }
+
     DbSet<CatalogJobStep> CatalogJobSteps { get; }
 
     DbSet<Order> Orders { get; }

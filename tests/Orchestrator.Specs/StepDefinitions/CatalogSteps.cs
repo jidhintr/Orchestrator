@@ -35,6 +35,13 @@ public sealed class CatalogSteps(ApiContext api)
     public void ThenTheApprovalChainDepartmentsAre(string expected) =>
         Assert.Equal(api.Expand(expected), string.Join(",", api.Json!.Value.GetProperty("stages").EnumerateArray().Select(s => s.GetProperty("departmentName").GetString())));
 
+    [Given("a catalog category {string} exists")]
+    public async Task GivenACategoryExists(string name)
+    {
+        await api.SendAsSuperAdminAsync("POST", "/api/v1/categories", JsonSerializer.Serialize(new { name = api.Expand(name) }));
+        Assert.Equal(201, (int)api.Status);
+    }
+
     [Given("a job type {string} exists")]
     public async Task GivenAJobTypeExists(string name)
     {

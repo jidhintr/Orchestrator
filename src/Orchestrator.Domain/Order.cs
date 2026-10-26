@@ -67,6 +67,8 @@ public sealed class Priority : BaseEntity
 
 public sealed class Order : BaseEntity
 {
+    public string OrderNo => $"SO-{Id:D5}";
+
     public int ClientId { get; set; }
 
     public Client? Client { get; set; }

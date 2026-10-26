@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Orchestrator.Application.Access;
 using Orchestrator.Application.Errors;
 using Orchestrator.Domain;
 
 namespace Orchestrator.Application.Catalogs;
 
-public sealed class CatalogService(IAppDbContext db)
+public sealed class CatalogService(IAppDbContext db, CurrentUser currentUser)
 {
     public async Task<IReadOnlyList<CatalogResponse>> ListAsync(CancellationToken cancellationToken) =>
         [.. (await WithSteps().AsNoTracking().OrderBy(c => c.Name).ToListAsync(cancellationToken)).Select(CatalogResponse.From)];
@@ -16,7 +17,7 @@ public sealed class CatalogService(IAppDbContext db)
     public async Task<CatalogResponse> CreateAsync(CatalogRequest request, CancellationToken cancellationToken)
     {
         var catalog = new Catalog { Sku = request.Sku.Trim(), Name = request.Name.Trim() };
-        Apply(catalog, request);
+        await ApplyAsync(catalog, request, cancellationToken);
         await SetStepsAsync(catalog, request.JobTypeIds, request.StandardMinutes, cancellationToken);
         db.Catalogs.Add(catalog);
         await db.SaveChangesAsync(cancellationToken);
@@ -29,7 +30,7 @@ public sealed class CatalogService(IAppDbContext db)
         await EnsureNoOrdersAsync(catalog, "edited", cancellationToken);
         catalog.Sku = request.Sku.Trim();
         catalog.Name = request.Name.Trim();
-        Apply(catalog, request);
+        await ApplyAsync(catalog, request, cancellationToken);
         db.CatalogJobSteps.RemoveRange(catalog.CatalogJobSteps);
         catalog.CatalogJobSteps.Clear();
         await SetStepsAsync(catalog, request.JobTypeIds, request.StandardMinutes, cancellationToken);
@@ -52,6 +53,21 @@ public sealed class CatalogService(IAppDbContext db)
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<CatalogResponse> ApproveAsync(int id, CancellationToken cancellationToken)
+    {
+        var actor = await currentUser.RequireAsync(Rank.Admin, cancellationToken);
+        var catalog = await FindAsync(id, cancellationToken);
+        if (catalog.ApprovedAt is not null)
+        {
+            throw new ConflictException($"Catalog '{catalog.Sku}' is already approved.");
+        }
+
+        catalog.ApprovedAt = DateTime.UtcNow;
+        catalog.ApprovedByUserId = actor.Id;
+        await db.SaveChangesAsync(cancellationToken);
+        return CatalogResponse.From(catalog);
+    }
+
     public async Task<CatalogResponse> CloneAsync(int id, CloneCatalogRequest request, CancellationToken cancellationToken)
     {
         var source = await FindAsync(id, cancellationToken);
@@ -65,6 +81,10 @@ public sealed class CatalogService(IAppDbContext db)
             LaborCost = source.LaborCost,
             CommissionPercent = source.CommissionPercent,
             ProfitPercent = source.ProfitPercent,
+            CategoryId = source.CategoryId,
+            AvailableFrom = source.AvailableFrom,
+            AvailableTo = source.AvailableTo,
+            BasedOnCatalogId = source.Id,
         };
         clone.CatalogJobSteps.AddRange(source.CatalogJobSteps.Select(s => new CatalogJobStep { JobTypeId = s.JobTypeId, Sequence = s.Sequence, StandardMinutes = s.StandardMinutes }));
         db.Catalogs.Add(clone);
@@ -72,8 +92,22 @@ public sealed class CatalogService(IAppDbContext db)
         return await GetAsync(clone.Id, cancellationToken);
     }
 
-    private static void Apply(Catalog catalog, CatalogRequest request)
+    private async Task ApplyAsync(Catalog catalog, CatalogRequest request, CancellationToken cancellationToken)
     {
+        if (request.AvailableFrom > request.AvailableTo)
+        {
+            throw new BadRequestException("availableFrom cannot be after availableTo.");
+        }
+
+        if (request.CategoryId is { } categoryId && categoryId != catalog.CategoryId
+            && !await db.Categories.AnyAsync(c => c.Id == categoryId && c.IsActive, cancellationToken))
+        {
+            throw new BadRequestException($"Category {categoryId} does not exist or is deactivated.");
+        }
+
+        catalog.CategoryId = request.CategoryId;
+        catalog.AvailableFrom = request.AvailableFrom;
+        catalog.AvailableTo = request.AvailableTo;
         catalog.Description = request.Description;
         catalog.BasePrice = request.BasePrice;
         catalog.CatalogDiscountPercent = request.CatalogDiscountPercent;
@@ -107,7 +141,7 @@ public sealed class CatalogService(IAppDbContext db)
         }
     }
 
-    private IQueryable<Catalog> WithSteps() => db.Catalogs.Include(c => c.CatalogJobSteps).ThenInclude(s => s.JobType);
+    private IQueryable<Catalog> WithSteps() => db.Catalogs.Include(c => c.Category).Include(c => c.CatalogJobSteps).ThenInclude(s => s.JobType);
 
     private async Task<Catalog> FindAsync(int id, CancellationToken cancellationToken) =>
         await WithSteps().SingleOrDefaultAsync(c => c.Id == id, cancellationToken) ?? throw new NotFoundException($"Catalog '{id}' was not found.");

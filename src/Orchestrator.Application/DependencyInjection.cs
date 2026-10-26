@@ -3,6 +3,7 @@ using Orchestrator.Application.Access;
 using Orchestrator.Application.ApprovalChains;
 using Orchestrator.Application.Auth;
 using Orchestrator.Application.Catalogs;
+using Orchestrator.Application.Categories;
 using Orchestrator.Application.Clients;
 using Orchestrator.Application.Departments;
 using Orchestrator.Application.JobTypes;
@@ -19,6 +20,7 @@ public static class DependencyInjection
         .AddScoped<UserService>()
         .AddScoped<RoleService>()
         .AddScoped<CatalogService>()
+        .AddScoped<CategoryService>()
         .AddScoped<ClientService>()
         .AddScoped<OrderService>()
         .AddScoped<OrderApprovalService>()

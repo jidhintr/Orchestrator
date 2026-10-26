@@ -1,0 +1,67 @@
+### Catalog categories API v1. Every request needs the access token from the sign in request below.
+### Select the "local" environment (http/http-client.env.json). Run requests top to bottom.
+
+### Sign in (put login and password in http/http-client.private.env.json, which is git-ignored)
+# @name login
+POST {{baseUrl}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "login": "superadmin@orchestrator.local",
+  "password": "12345678"
+}
+
+### List categories
+GET {{baseUrl}}/api/v1/categories
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json
+
+### Create a category (admins only)
+# @name create
+POST {{baseUrl}}/api/v1/categories
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "name": "Bags", "description": "Paper and gift bags" }
+
+### Get the category created above
+GET {{baseUrl}}/api/v1/categories/{{create.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Accept: application/json
+
+### Update it
+PUT {{baseUrl}}/api/v1/categories/{{create.response.body.$.id}}
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "name": "Bags and sacks", "description": "Paper and gift bags" }
+
+### Deactivate it (catalogs already using it keep it)
+POST {{baseUrl}}/api/v1/categories/{{create.response.body.$.id}}/deactivate
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Activate it again
+POST {{baseUrl}}/api/v1/categories/{{create.response.body.$.id}}/activate
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### A name that is too short returns 400
+POST {{baseUrl}}/api/v1/categories
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "name": "x" }
+
+### A duplicate name returns 409
+POST {{baseUrl}}/api/v1/categories
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "name": "Bags and sacks" }
+
+### Unknown category returns 404
+GET {{baseUrl}}/api/v1/categories/999999
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
+### Without a token returns 401
+GET {{baseUrl}}/api/v1/categories
+Accept: application/json

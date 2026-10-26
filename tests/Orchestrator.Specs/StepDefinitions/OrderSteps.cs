@@ -18,6 +18,8 @@ public sealed class OrderSteps(ApiContext api)
         await api.SendAsSuperAdminAsync("POST", "/api/v1/catalogs", JsonSerializer.Serialize(new { sku = $"ORD{api.Unique}", name = $"Catalog {api.Unique}", jobTypeIds = JobTypeIds }));
         Assert.Equal(201, (int)api.Status);
         api.Aliases["catalog:current"] = api.LastId!;
+        await api.SendAsSuperAdminAsync("POST", $"/api/v1/catalogs/{api.LastId}/approve");
+        Assert.Equal(200, (int)api.Status);
         await api.SendAsSuperAdminAsync("POST", "/api/v1/approval-chains", JsonSerializer.Serialize(new { name = $"Chain {api.Unique}", catalogId = Id("catalog:current"), departmentIds = new[] { 3 } }));
         Assert.Equal(201, (int)api.Status);
     }

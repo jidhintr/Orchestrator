@@ -23,6 +23,8 @@ public sealed class OrchestratorDbContext(DbContextOptions<OrchestratorDbContext
 
     public DbSet<Catalog> Catalogs => Set<Catalog>();
 
+    public DbSet<Category> Categories => Set<Category>();
+
     public DbSet<CatalogJobStep> CatalogJobSteps => Set<CatalogJobStep>();
 
     public DbSet<Order> Orders => Set<Order>();

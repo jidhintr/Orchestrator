@@ -45,6 +45,7 @@ public class OrdersTests(ApiFixture api)
         Assert.Equal(HttpStatusCode.Created, reply.Status);
         Assert.EndsWith($"/api/v1/orders/{reply.Id}", reply.Header("Location"), StringComparison.Ordinal);
         Assert.True(reply.Id >= 1000);
+        Assert.Equal($"SO-{reply.Id:D5}", reply.Str("orderNo"));
         Assert.Equal(("PendingApproval", "Premium"), (reply.Str("status"), reply.Str("priorityName")));
         Assert.Equal((700m, 35m, 250m, 915m), (reply["subTotal"].GetDecimal(), reply["discountTotal"].GetDecimal(), reply["priorityCost"].GetDecimal(), reply["netAmount"].GetDecimal()));
         var items = reply["items"].EnumerateArray().ToList();
@@ -84,6 +85,18 @@ public class OrdersTests(ApiFixture api)
         Assert.Equal(2, again["items"][0].GetProperty("specs").GetArrayLength());
         var blank = await api.Post("orders", new { clientId = client, items = new[] { new { catalogId = catalog, quantity = 1, specs = new[] { new { name = "Size", value = "" } } } } });
         Assert.Equal(HttpStatusCode.BadRequest, blank.Status);
+    }
+
+    [Fact]
+    public async Task Place_rejects_an_unapproved_catalog_and_one_outside_its_availability_window()
+    {
+        var client = await api.NewClient();
+        var jobType = await api.NewJobType();
+        var unapproved = await api.Post("catalogs", ApiFixture.CatalogBody("SKU-" + ApiFixture.Unique(), [jobType]));
+        ProblemAssert.Is(await api.Post("orders", new { clientId = client, items = Lines((unapproved.Id, 1)) }), HttpStatusCode.Conflict);
+        var future = await api.Post("catalogs", new { sku = "SKU-" + ApiFixture.Unique(), name = "Future", jobTypeIds = new[] { jobType }, availableFrom = "2099-01-01" });
+        Assert.Equal(HttpStatusCode.OK, (await api.Post($"catalogs/{future.Id}/approve")).Status);
+        ProblemAssert.Is(await api.Post("orders", new { clientId = client, items = Lines((future.Id, 1)) }), HttpStatusCode.Conflict);
     }
 
     [Fact]

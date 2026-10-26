@@ -7,6 +7,7 @@ import { Clients } from './Clients'
 import { Dashboard } from './Dashboard'
 import { Departments } from './Departments'
 import { ErrorPage } from './ErrorPage'
+import { Categories } from './Categories'
 import { JobTypes } from './JobTypes'
 import { Login } from './Login'
 import { Orders } from './Orders'
@@ -18,6 +19,7 @@ import { Avatar, Icon } from './ui'
 const pages = {
   dashboard: { title: 'Dashboard', icon: 'dashboard', view: <Dashboard /> },
   catalogs: { title: 'Catalogs', icon: 'catalogs', view: <Catalogs /> },
+  categories: { title: 'Categories', icon: 'catalogs', view: <Categories /> },
   'job-types': { title: 'Job types', icon: 'jobtypes', view: <JobTypes /> },
   approvals: { title: 'Approvals', icon: 'chains', view: <Chains /> },
   orders: { title: 'Orders', icon: 'orders', view: <Orders /> },
@@ -32,7 +34,7 @@ type Route = keyof typeof pages
 
 const groups: { title: string; routes: Route[] }[] = [
   { title: 'Overview', routes: ['dashboard'] },
-  { title: 'Production', routes: ['catalogs', 'job-types', 'approvals'] },
+  { title: 'Production', routes: ['catalogs', 'categories', 'job-types', 'approvals'] },
   { title: 'Customers', routes: ['orders', 'clients'] },
   { title: 'People', routes: ['departments', 'users', 'roles'] },
 ]

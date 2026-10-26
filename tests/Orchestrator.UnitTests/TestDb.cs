@@ -47,6 +47,14 @@ internal static class TestDb
         return user;
     }
 
+    public static Category AddCategory(this OrchestratorDbContext db, string name, bool active = true)
+    {
+        var category = new Category { Name = name, IsActive = active };
+        db.Categories.Add(category);
+        db.SaveChanges();
+        return category;
+    }
+
     public static JobType AddJobType(this OrchestratorDbContext db, string name, bool active = true)
     {
         var jobType = new JobType { Name = name, IsActive = active };
@@ -82,7 +90,7 @@ internal static class TestDb
 
     public static Catalog AddCatalog(this OrchestratorDbContext db, string sku, params JobType[] steps)
     {
-        var catalog = new Catalog { Sku = sku, Name = $"Catalog {sku}", BasePrice = 10m };
+        var catalog = new Catalog { Sku = sku, Name = $"Catalog {sku}", BasePrice = 10m, ApprovedAt = DateTime.UtcNow };
         catalog.CatalogJobSteps.AddRange(steps.Select((j, i) => new CatalogJobStep { JobTypeId = j.Id, Sequence = i + 1 }));
         db.Catalogs.Add(catalog);
         db.SaveChanges();

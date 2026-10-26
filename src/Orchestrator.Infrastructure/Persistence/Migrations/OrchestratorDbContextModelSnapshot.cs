@@ -186,13 +186,31 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
                     NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ApprovedByUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<DateOnly?>("AvailableFrom")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("AvailableTo")
+                        .HasColumnType("date");
+
                     b.Property<decimal>("BasePrice")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<int?>("BasedOnCatalogId")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("CatalogDiscountPercent")
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
+
+                    b.Property<int?>("CategoryId")
+                        .HasColumnType("integer");
 
                     b.Property<decimal>("CommissionPercent")
                         .HasPrecision(5, 2)
@@ -237,6 +255,12 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         .UseCollation("case_insensitive");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ApprovedByUserId");
+
+                    b.HasIndex("BasedOnCatalogId");
+
+                    b.HasIndex("CategoryId");
 
                     b.HasIndex("Sku")
                         .IsUnique();
@@ -287,6 +311,48 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                     b.HasIndex("JobTypeId");
 
                     b.ToTable("catalog_job_steps", "biz");
+                });
+
+            modelBuilder.Entity("Orchestrator.Domain.Category", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    NpgsqlPropertyBuilderExtensions.HasIdentityOptions(b.Property<int>("Id"), 1000L, null, null, null, null, null);
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime>("InsertedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("InsertedById")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastUpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("LastUpdatedById")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .UseCollation("case_insensitive");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("categories", "biz");
                 });
 
             modelBuilder.Entity("Orchestrator.Domain.Client", b =>
@@ -1449,6 +1515,26 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("Department");
+                });
+
+            modelBuilder.Entity("Orchestrator.Domain.Catalog", b =>
+                {
+                    b.HasOne("Orchestrator.Domain.User", null)
+                        .WithMany()
+                        .HasForeignKey("ApprovedByUserId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Orchestrator.Domain.Catalog", null)
+                        .WithMany()
+                        .HasForeignKey("BasedOnCatalogId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Orchestrator.Domain.Category", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("Orchestrator.Domain.CatalogJobStep", b =>

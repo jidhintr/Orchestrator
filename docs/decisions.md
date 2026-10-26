@@ -99,3 +99,9 @@ Add a short section for each significant choice (context, decision, alternatives
 - **Work time** includes held time until hold durations are derived from the log.
 - **Migration:** `OrderStepFlow` adds the columns and tables; existing steps get department 9 and CanReject from their position. Verified Up, Down and Up on a scratch database. Orders already PendingApproval keep no approval rows (they can be cancelled).
 - **Open:** earnings formula (`docs/TODO-earnings.md`), step discount, notification channel, whether Ready alerts need a notifications table, working-hours time.
+
+## ADR-0010: Order number, catalog categories, seasonal window and catalog approval (2026-10-26, owner)
+- **Order number:** `SO-` plus the order id padded to 5 digits, computed in the API (not stored). Simple and always unique; the cost is the format cannot change per order later. Revisit if a separate numbering sequence or per-year reset is needed.
+- **Categories:** own table `categories` with admin CRUD; catalogs point to it by id (optional).
+- **Seasonal window:** `AvailableFrom` / `AvailableTo` on the catalog; placing an order outside it is 409. Dates are compared with the server's UTC date.
+- **Approval:** Admin or Super Admin only. New and cloned catalogs start unapproved and cannot be ordered; editing an approved catalog does not reset it. The migration approved every existing catalog. Clone links to its source with `BasedOnCatalogId`.

@@ -33,6 +33,10 @@ Content-Type: application/json
 
 { "sku": "ORDERS-DEMO", "name": "Orders demo", "jobTypeIds": [1, 2, 4] }
 
+### Approve the catalog (admins only; an unapproved catalog cannot be ordered)
+POST {{baseUrl}}/api/v1/catalogs/{{catalog.response.body.$.id}}/approve
+Authorization: Bearer {{login.response.body.$.accessToken}}
+
 ### Give the catalog one approval stage (Accounting, department 3) so new orders wait for approval
 POST {{baseUrl}}/api/v1/approval-chains
 Authorization: Bearer {{login.response.body.$.accessToken}}

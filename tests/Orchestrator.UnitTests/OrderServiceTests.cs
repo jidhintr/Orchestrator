@@ -70,6 +70,26 @@ public class OrderServiceTests
     }
 
     [Fact]
+    public async Task Place_rejects_an_unapproved_catalog_and_one_outside_its_season()
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        _catalog.ApprovedAt = null;
+        _db.SaveChanges();
+        await Assert.ThrowsAsync<ConflictException>(() => As(_employee.Id).PlaceAsync(Place(), default));
+        _catalog.ApprovedAt = DateTime.UtcNow;
+        _catalog.AvailableFrom = today.AddDays(1);
+        _db.SaveChanges();
+        await Assert.ThrowsAsync<ConflictException>(() => As(_employee.Id).PlaceAsync(Place(), default));
+        _catalog.AvailableFrom = today.AddDays(-5);
+        _catalog.AvailableTo = today.AddDays(-1);
+        _db.SaveChanges();
+        await Assert.ThrowsAsync<ConflictException>(() => As(_employee.Id).PlaceAsync(Place(), default));
+        _catalog.AvailableTo = today;
+        _db.SaveChanges();
+        Assert.Equal(OrderStatus.PendingApproval, (await As(_employee.Id).PlaceAsync(Place(), default)).Status);
+    }
+
+    [Fact]
     public async Task Place_rejects_missing_unknown_duplicate_deactivated_and_past_input()
     {
         var service = As(_employee.Id);

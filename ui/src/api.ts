@@ -74,6 +74,7 @@ export interface OrderItem {
 
 export interface Order {
   id: number
+  orderNo: string
   clientId: number
   clientCompanyName: string
   priorityId: number
@@ -123,11 +124,27 @@ export interface Catalog {
   laborCost: number
   commissionPercent: number
   profitPercent: number
+  categoryId: number | null
+  categoryName: string | null
+  availableFrom: string | null
+  availableTo: string | null
+  basedOnCatalogId: number | null
+  isApproved: boolean
+  approvedAt: string | null
   isActive: boolean
   steps: { jobTypeId: number; jobTypeName: string; sequence: number }[]
 }
 
-export type CatalogInput = Omit<Catalog, 'id' | 'isActive' | 'steps'> & { jobTypeIds: number[] }
+export type CatalogInput = Omit<Catalog, 'id' | 'isActive' | 'steps' | 'categoryName' | 'basedOnCatalogId' | 'isApproved' | 'approvedAt'> & { jobTypeIds: number[] }
+
+export interface Category {
+  id: number
+  name: string
+  description: string | null
+  isActive: boolean
+}
+
+export type CategoryInput = Omit<Category, 'id' | 'isActive'>
 
 export interface ApprovalChain {
   id: number
@@ -335,6 +352,13 @@ export const api = {
   updateCatalog: (id: number, input: CatalogInput) => call<Catalog>(`/catalogs/${id}`, 'PUT', input),
   deactivateCatalog: (id: number) => call<void>(`/catalogs/${id}/deactivate`, 'POST'),
   activateCatalog: (id: number) => call<void>(`/catalogs/${id}/activate`, 'POST'),
+  approveCatalog: (id: number) => call<Catalog>(`/catalogs/${id}/approve`, 'POST'),
+  categories: () => call<Category[]>('/categories'),
+  category: (id: number) => call<Category>(`/categories/${id}`),
+  createCategory: (input: CategoryInput) => call<Category>('/categories', 'POST', input),
+  updateCategory: (id: number, input: CategoryInput) => call<Category>(`/categories/${id}`, 'PUT', input),
+  deactivateCategory: (id: number) => call<void>(`/categories/${id}/deactivate`, 'POST'),
+  activateCategory: (id: number) => call<void>(`/categories/${id}/activate`, 'POST'),
   cloneCatalog: (id: number, sku: string, name: string) => call<Catalog>(`/catalogs/${id}/clone`, 'POST', { sku, name }),
 
   chains: () => call<ApprovalChain[]>('/approval-chains'),

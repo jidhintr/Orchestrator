@@ -63,6 +63,20 @@ public sealed class OrderService(IAppDbContext db, CurrentUser currentUser)
             throw new BadRequestException("Every catalog must exist and be active.");
         }
 
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        foreach (var catalog in catalogs.Values)
+        {
+            if (catalog.ApprovedAt is null)
+            {
+                throw new ConflictException($"Catalog '{catalog.Sku}' is not approved yet.");
+            }
+
+            if (catalog.AvailableFrom > today || catalog.AvailableTo < today)
+            {
+                throw new ConflictException($"Catalog '{catalog.Sku}' is not available today.");
+            }
+        }
+
         var order = new Order
         {
             ClientId = client.Id,

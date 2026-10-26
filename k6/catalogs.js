@@ -35,6 +35,10 @@ export default function (token) {
     return;
   }
   const cloneId = cloned.json('id');
+  check(cloned, { 'clone: unapproved, linked to source': (r) => r.json('isApproved') === false && r.json('basedOnCatalogId') === id });
+  check(api.post(`${API}/${cloneId}/approve`), { 'approve: 200': (r) => r.status === 200 && r.json('isApproved') === true });
+  check(api.post(`${API}/${cloneId}/approve`), { 'approve again: 409': (r) => r.status === 409 });
+  check(api.post(`${API}/999999/approve`), { 'approve unknown: 404': (r) => r.status === 404 });
 
   check(api.put(`${API}/${cloneId}`, JSON.stringify({ sku: `K6C${suffix}`, name: `K6 clone ${suffix}`, jobTypeIds: [4, 1] }), json), {
     'update: 200': (r) => r.status === 200,

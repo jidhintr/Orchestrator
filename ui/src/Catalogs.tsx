@@ -1,7 +1,7 @@
 import { useAccess } from './access'
 import { type FormEvent, useEffect, useState } from 'react'
 import { type Col, useGrid } from './grid'
-import { api, type ApprovalChain, type Catalog, type CatalogInput, type JobType } from './api'
+import { api, type ApprovalChain, type Catalog, type Category, type CatalogInput, type JobType } from './api'
 import { Badge, Timeline, Filters, Icon, matches, message, Modal, OrderedPicker, Page, Select, StatusBadges, locked, useList, useRunner, useToast, Form, Submit } from './ui'
 
 type Panel = { mode: 'create' } | { mode: 'detail'; id: number; edit?: boolean } | null
@@ -17,9 +17,20 @@ function useJobTypes() {
   return jobTypes
 }
 
+function useCategories() {
+  const [categories, setCategories] = useState<Category[]>([])
+  useEffect(() => {
+    api.categories().then(setCategories).catch(() => undefined)
+  }, [])
+  return categories
+}
+
+const availability = (c: Catalog) => (c.availableFrom || c.availableTo ? `${c.availableFrom ?? '...'} to ${c.availableTo ?? '...'}` : 'Always')
+
 export function Catalogs() {
   const { items, error, load } = useList(api.catalogs)
   const jobTypes = useJobTypes()
+  const categories = useCategories()
   const [panel, setPanel] = useState<Panel>(null)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState('all')
@@ -39,6 +50,9 @@ export function Catalogs() {
     { key: 'name', label: 'Catalog', kind: 'text', locked: true, value: (c) => c.name, cell: (c) => <button className="link" onClick={() => open({ mode: 'detail', id: c.id })}>{c.name}</button> },
     { key: 'sku', label: 'SKU', kind: 'text', value: (c) => c.sku, cell: (c) => <code>{c.sku}</code> },
     { key: 'description', label: 'Description', kind: 'text', value: (c) => c.description ?? '', cell: (c) => <span className="muted">{c.description}</span> },
+    { key: 'category', label: 'Category', kind: 'text', value: (c) => c.categoryName ?? '', cell: (c) => c.categoryName },
+    { key: 'available', label: 'Available', kind: 'text', value: availability, cell: availability },
+    { key: 'approval', label: 'Approval', kind: 'text', value: (c) => (c.isApproved ? 'Approved' : 'Awaiting approval'), cell: (c) => <Badge kind={c.isApproved ? 'ok' : 'warn'}>{c.isApproved ? 'Approved' : 'Awaiting approval'}</Badge> },
     { key: 'basePrice', label: 'Base price', kind: 'number', value: (c) => c.basePrice, cell: (c) => money(c.basePrice) },
     { key: 'discount', label: 'Discount %', kind: 'number', value: (c) => c.catalogDiscountPercent, cell: (c) => `${c.catalogDiscountPercent}%` },
     { key: 'labor', label: 'Labor cost', kind: 'number', value: (c) => c.laborCost, cell: (c) => money(c.laborCost) },
@@ -47,7 +61,7 @@ export function Catalogs() {
     { key: 'steps', label: 'Steps', kind: 'text', value: (c) => c.steps.map((x) => x.jobTypeName).join(', '), cell: (c) => <Timeline items={c.steps.map((x) => x.jobTypeName)} /> },
     { key: 'status', label: 'Status', kind: 'text', value: (c) => (c.isActive ? 'Active' : 'Inactive'), cell: (c) => <StatusBadges active={c.isActive} /> },
   ]
-  const grid = useGrid('grid:catalogs', all, ['description', 'discount', 'labor', 'commission', 'profit'])
+  const grid = useGrid('grid:catalogs', all, ['description', 'available', 'discount', 'labor', 'commission', 'profit'])
 
   const visible = items && grid.filter(items).filter((c) =>
     (status === 'all' || (status === 'active') === c.isActive) &&
@@ -81,14 +95,14 @@ export function Catalogs() {
           </tbody>
         </table>
       )}
-      {panel?.mode === 'create' && <Modal title="New catalog" onClose={close}><CreateForm jobTypes={jobTypes} onDone={saved} onCancel={close} /></Modal>}
-      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit catalog' : 'Catalog'} readOnly={!panel.edit} onEdit={canEdit ? () => setPanel({ ...panel, edit: true }) : undefined} changeKey={panel.id} onClose={close}><Detail id={panel.id} jobTypes={jobTypes} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
+      {panel?.mode === 'create' && <Modal title="New catalog" onClose={close}><CreateForm jobTypes={jobTypes} categories={categories} onDone={saved} onCancel={close} /></Modal>}
+      {panel?.mode === 'detail' && <Modal title={panel.edit ? 'Edit catalog' : 'Catalog'} readOnly={!panel.edit} onEdit={canEdit ? () => setPanel({ ...panel, edit: true }) : undefined} changeKey={panel.id} onClose={close}><Detail id={panel.id} jobTypes={jobTypes} categories={categories} onChanged={saved} onSaved={() => void load()} onClose={close} /></Modal>}
       {toast}
     </Page>
   )
 }
 
-function CatalogForm({ catalog, jobTypes, submitLabel, onSubmit, children, extra }: { catalog?: Catalog; jobTypes: JobType[]; submitLabel: string; onSubmit: (input: CatalogInput, active: boolean) => unknown; children?: React.ReactNode; extra?: React.ReactNode }) {
+function CatalogForm({ catalog, jobTypes, categories, submitLabel, onSubmit, children, extra }: { catalog?: Catalog; jobTypes: JobType[]; categories: Category[]; submitLabel: string; onSubmit: (input: CatalogInput, active: boolean) => unknown; children?: React.ReactNode; extra?: React.ReactNode }) {
   const [steps, setSteps] = useState<number[]>(catalog?.steps.map((s) => s.jobTypeId) ?? [])
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
@@ -103,6 +117,9 @@ function CatalogForm({ catalog, jobTypes, submitLabel, onSubmit, children, extra
       laborCost: num(d.get('laborCost')),
       commissionPercent: num(d.get('commissionPercent')),
       profitPercent: num(d.get('profitPercent')),
+      categoryId: String(d.get('categoryId')) === '' ? null : num(d.get('categoryId')),
+      availableFrom: String(d.get('availableFrom')) || null,
+      availableTo: String(d.get('availableTo')) || null,
       jobTypeIds: steps,
     }, d.get('isActive') === 'on')
   }
@@ -120,7 +137,13 @@ function CatalogForm({ catalog, jobTypes, submitLabel, onSubmit, children, extra
       <label>Description<input name="description" maxLength={1000} defaultValue={catalog?.description ?? ''} /></label>
       <div className="row">{field('basePrice', 'Base price', 1000000000)}{field('catalogDiscountPercent', 'Discount %', 100)}</div>
       <div className="row">{field('laborCost', 'Labor cost', 1000000000)}{field('commissionPercent', 'Commission %', 100)}</div>
-      <div className="row">{field('profitPercent', 'Profit %', 100)}</div>
+      <div className="row">{field('profitPercent', 'Profit %', 100)}
+        <label>Category<select name="categoryId" defaultValue={catalog?.categoryId ?? ''}><option value="">-- None --</option>{categories.filter((x) => x.isActive || x.id === catalog?.categoryId).map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label>
+      </div>
+      <div className="row">
+        <label>Available from<input name="availableFrom" type="date" defaultValue={catalog?.availableFrom ?? ''} /></label>
+        <label>Available to<input name="availableTo" type="date" defaultValue={catalog?.availableTo ?? ''} /></label>
+      </div>
       {catalog && <label className="switch"><input type="checkbox" role="switch" name="isActive" defaultChecked={catalog.isActive} /><span>Active</span></label>}
       <fieldset>
         <legend>Job steps in order</legend>
@@ -132,10 +155,10 @@ function CatalogForm({ catalog, jobTypes, submitLabel, onSubmit, children, extra
   )
 }
 
-function CreateForm({ jobTypes, onDone, onCancel }: { jobTypes: JobType[]; onDone: (text: string) => void; onCancel: () => void }) {
+function CreateForm({ jobTypes, categories, onDone, onCancel }: { jobTypes: JobType[]; categories: Category[]; onDone: (text: string) => void; onCancel: () => void }) {
   const { run, feedback } = useRunner()
   return (
-    <CatalogForm jobTypes={jobTypes} submitLabel="Create" onSubmit={(input) => run(async () => {
+    <CatalogForm jobTypes={jobTypes} categories={categories} submitLabel="Create" onSubmit={(input) => run(async () => {
       await api.createCatalog(input)
       onDone('Catalog created.')
     })} extra={<button type="button" className="secondary" onClick={onCancel}>Cancel</button>}>
@@ -144,11 +167,12 @@ function CreateForm({ jobTypes, onDone, onCancel }: { jobTypes: JobType[]; onDon
   )
 }
 
-function Detail({ id, jobTypes, onChanged, onSaved, onClose }: { onSaved: () => void; id: number; jobTypes: JobType[]; onChanged: (text: string) => void; onClose: () => void }) {
+function Detail({ id, jobTypes, categories, onChanged, onSaved, onClose }: { onSaved: () => void; id: number; jobTypes: JobType[]; categories: Category[]; onChanged: (text: string) => void; onClose: () => void }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [chain, setChain] = useState<ApprovalChain | null>(null)
   const [cloning, setCloning] = useState(false)
   const { run, feedback, error, setError } = useRunner()
+  const canApprove = useAccess().can('catalogApprove')
 
   useEffect(() => {
     Promise.all([api.catalog(id), api.chainForCatalog(id)])
@@ -172,12 +196,12 @@ function Detail({ id, jobTypes, onChanged, onSaved, onClose }: { onSaved: () => 
 
   return (
     <>
-      <p className="meta"><code>{catalog.sku}</code><StatusBadges active={catalog.isActive} />{chain && <Badge kind="muted">{chain.isDefault ? 'Default approval chain' : `Chain: ${chain.name}`}</Badge>}</p>
-      <CatalogForm key={JSON.stringify(catalog)} catalog={catalog} jobTypes={jobTypes} submitLabel="Save"
+      <p className="meta"><code>{catalog.sku}</code><StatusBadges active={catalog.isActive} /><Badge kind={catalog.isApproved ? 'ok' : 'warn'}>{catalog.isApproved ? 'Approved' : 'Awaiting approval'}</Badge>{chain && <Badge kind="muted">{chain.isDefault ? 'Default approval chain' : `Chain: ${chain.name}`}</Badge>}</p>
+      <CatalogForm key={JSON.stringify(catalog)} catalog={catalog} jobTypes={jobTypes} categories={categories} submitLabel="Save"
         onSubmit={(input, active) => run(async () => {
           const same = input.sku === catalog.sku && input.name === catalog.name && input.description === catalog.description && input.basePrice === catalog.basePrice
             && input.catalogDiscountPercent === catalog.catalogDiscountPercent && input.laborCost === catalog.laborCost && input.commissionPercent === catalog.commissionPercent
-            && input.profitPercent === catalog.profitPercent && JSON.stringify(input.jobTypeIds) === JSON.stringify(catalog.steps.map((s) => s.jobTypeId))
+            && input.profitPercent === catalog.profitPercent && input.categoryId === catalog.categoryId && input.availableFrom === catalog.availableFrom && input.availableTo === catalog.availableTo && JSON.stringify(input.jobTypeIds) === JSON.stringify(catalog.steps.map((s) => s.jobTypeId))
           let next = same ? catalog : await api.updateCatalog(id, input)
           if (active !== next.isActive) {
             await (active ? api.activateCatalog(id) : api.deactivateCatalog(id))
@@ -187,6 +211,10 @@ function Detail({ id, jobTypes, onChanged, onSaved, onClose }: { onSaved: () => 
           onSaved()
         }, 'Saved.')}
         extra={<>
+          {canApprove && !catalog.isApproved && <button type="button" className="secondary" onClick={() => void run(async () => {
+            setCatalog(await api.approveCatalog(id))
+            onSaved()
+          }, 'Approved.')}>Approve</button>}
           <button type="button" className="secondary" onClick={() => setCloning(true)}>Clone</button>
           <button type="button" className="secondary" onClick={onClose}>Close</button>
         </>}>

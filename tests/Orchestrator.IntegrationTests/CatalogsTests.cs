@@ -22,6 +22,42 @@ public class CatalogsTests(ApiFixture api)
     }
 
     [Fact]
+    public async Task Create_starts_unapproved_and_only_an_admin_approves_once()
+    {
+        var created = await api.Post("catalogs", ApiFixture.CatalogBody(Sku(), [await api.NewJobType()]));
+        Assert.False(created["isApproved"].GetBoolean());
+        var manager = await api.NewManager(Orchestrator.Domain.SystemIds.UnassignedDepartment);
+        ProblemAssert.Is(await api.Post($"catalogs/{created.Id}/approve", actor: manager), HttpStatusCode.Forbidden);
+        var approved = await api.Post($"catalogs/{created.Id}/approve");
+        Assert.Equal(HttpStatusCode.OK, approved.Status);
+        Assert.True(approved["isApproved"].GetBoolean());
+        ProblemAssert.Is(await api.Post($"catalogs/{created.Id}/approve"), HttpStatusCode.Conflict);
+        ProblemAssert.Is(await api.Post($"catalogs/{ApiFixture.UnknownId}/approve"), HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Create_stores_the_category_and_availability_and_rejects_bad_ones()
+    {
+        var category = await api.Post("categories", new { name = "Cat " + ApiFixture.Unique() });
+        var jobType = await api.NewJobType();
+        var reply = await api.Post("catalogs", new { sku = Sku(), name = "Seasonal", categoryId = category.Id, availableFrom = "2030-11-01", availableTo = "2030-12-31", jobTypeIds = new[] { jobType } });
+        Assert.Equal(HttpStatusCode.Created, reply.Status);
+        Assert.Equal((category.Str("name"), "2030-11-01", "2030-12-31"), (reply.Str("categoryName"), reply.Str("availableFrom"), reply.Str("availableTo")));
+        Assert.Equal(HttpStatusCode.BadRequest, (await api.Post("catalogs", new { sku = Sku(), name = "Reversed", availableFrom = "2030-12-31", availableTo = "2030-11-01", jobTypeIds = new[] { jobType } })).Status);
+        Assert.Equal(HttpStatusCode.BadRequest, (await api.Post("catalogs", new { sku = Sku(), name = "Ghost", categoryId = ApiFixture.UnknownId, jobTypeIds = new[] { jobType } })).Status);
+        await api.Post($"categories/{category.Id}/deactivate");
+        Assert.Equal(HttpStatusCode.BadRequest, (await api.Post("catalogs", new { sku = Sku(), name = "Off", categoryId = category.Id, jobTypeIds = new[] { jobType } })).Status);
+    }
+
+    [Fact]
+    public async Task Clone_links_the_source_and_starts_unapproved()
+    {
+        var source = await api.NewCatalog();
+        var clone = await api.Post($"catalogs/{source}/clone", new { sku = Sku(), name = "Copy" });
+        Assert.Equal((source, false), (clone["basedOnCatalogId"].GetInt32(), clone["isApproved"].GetBoolean()));
+    }
+
+    [Fact]
     public async Task List_and_get_return_created_catalogs()
     {
         var id = await api.NewCatalog();
