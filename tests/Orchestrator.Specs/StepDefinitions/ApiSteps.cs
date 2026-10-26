@@ -85,6 +85,10 @@ public sealed class ApiSteps(ApiContext api)
             {
                 current = child;
             }
+            else if (current is { ValueKind: JsonValueKind.Array } array && int.TryParse(name, out var index) && index >= 0 && index < array.GetArrayLength())
+            {
+                current = array[index];
+            }
             else
             {
                 return null;

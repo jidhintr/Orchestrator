@@ -37,7 +37,7 @@ export default function ({ token, clientId, catalogId }) {
   check(api.get(`${API}/orders`), { 'list: 200': (r) => r.status === 200 });
   check(api.get(`${API}/priorities`), { 'priorities: four': (r) => r.status === 200 && r.json().length >= 4 });
 
-  const placed = api.post(`${API}/orders`, JSON.stringify({ clientId, items: [{ catalogId, quantity: 5 }], priorityId: 2 }), json);
+  const placed = api.post(`${API}/orders`, JSON.stringify({ clientId, items: [{ catalogId, quantity: 5, description: 'k6 item', specs: [{ name: 'Size', value: 'A4' }] }], priorityId: 2 }), json);
   if (!check(placed, {
     'place: 201': (r) => r.status === 201,
     'place: pending approval': (r) => r.json('status') === 'PendingApproval',

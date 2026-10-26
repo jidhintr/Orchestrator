@@ -82,6 +82,8 @@ public sealed class OrderService(IAppDbContext db, CurrentUser currentUser)
                 CatalogSku = catalog.Sku,
                 CatalogName = catalog.Name,
                 Quantity = line.Quantity,
+                Description = line.Description?.Trim(),
+                Specs = [.. (line.Specs ?? []).Select(x => new ItemSpec(x.Name.Trim(), x.Value.Trim()))],
                 UnitPrice = catalog.BasePrice,
                 CatalogDiscountPercent = catalog.CatalogDiscountPercent,
                 ClientDiscountPercent = client.TierDiscountPercent,

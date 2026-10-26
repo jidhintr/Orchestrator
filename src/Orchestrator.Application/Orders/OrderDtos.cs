@@ -10,6 +10,21 @@ public sealed record OrderItemRequest
 
     [Range(1, 1_000_000)]
     public required int Quantity { get; init; }
+
+    [StringLength(500)]
+    public string? Description { get; init; }
+
+    [MaxLength(20)]
+    public IReadOnlyList<ItemSpecRequest>? Specs { get; init; }
+}
+
+public sealed record ItemSpecRequest
+{
+    [Required, StringLength(50, MinimumLength = 1)]
+    public required string Name { get; init; }
+
+    [Required, StringLength(200, MinimumLength = 1)]
+    public required string Value { get; init; }
 }
 
 public sealed record PlaceOrderRequest
@@ -63,11 +78,11 @@ public sealed record PriorityResponse(int Id, string Name, int Rank, decimal Cos
 public sealed record OrderStepResponse(int Id, int JobTypeId, string JobTypeName, int SortOrder, StepStatus Status, int Progress, DateTime? StartedAt, DateTime? CompletedAt);
 
 public sealed record OrderItemResponse(
-    int Id, int CatalogId, string CatalogSku, string CatalogName, int Quantity, decimal UnitPrice,
+    int Id, int CatalogId, string CatalogSku, string CatalogName, int Quantity, string? Description, IReadOnlyList<ItemSpec> Specs, decimal UnitPrice,
     decimal CatalogDiscountPercent, decimal ClientDiscountPercent, decimal LineNet, IReadOnlyList<OrderStepResponse> Steps)
 {
     public static OrderItemResponse From(OrderItem i) => new(
-        i.Id, i.CatalogId, i.CatalogSku, i.CatalogName, i.Quantity, i.UnitPrice, i.CatalogDiscountPercent, i.ClientDiscountPercent, i.LineNet,
+        i.Id, i.CatalogId, i.CatalogSku, i.CatalogName, i.Quantity, i.Description, i.Specs, i.UnitPrice, i.CatalogDiscountPercent, i.ClientDiscountPercent, i.LineNet,
         [.. i.Steps.OrderBy(s => s.SortOrder).Select(s => new OrderStepResponse(s.Id, s.JobTypeId, s.JobTypeName, s.SortOrder, s.Status, s.Progress, s.StartedAt, s.CompletedAt))]);
 }
 

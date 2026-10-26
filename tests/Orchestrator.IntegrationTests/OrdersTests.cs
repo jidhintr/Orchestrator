@@ -71,6 +71,22 @@ public class OrdersTests(ApiFixture api)
     }
 
     [Fact]
+    public async Task Place_stores_the_item_description_and_specs_and_rejects_a_blank_spec_value()
+    {
+        var client = await api.NewClient();
+        var catalog = await Catalog();
+        var reply = await api.Post("orders", new { clientId = client, items = new[] { new { catalogId = catalog, quantity = 2, description = " Gift box ", specs = new[] { new { name = "Size", value = " A4 " }, new { name = "GSM", value = "300" } } } } });
+        Assert.Equal(HttpStatusCode.Created, reply.Status);
+        var item = reply["items"][0];
+        Assert.Equal("Gift box", item.GetProperty("description").GetString());
+        Assert.Equal(["Size=A4", "GSM=300"], item.GetProperty("specs").EnumerateArray().Select(s => s.GetProperty("name").GetString() + "=" + s.GetProperty("value").GetString()));
+        var again = await api.Get($"orders/{reply.Id}");
+        Assert.Equal(2, again["items"][0].GetProperty("specs").GetArrayLength());
+        var blank = await api.Post("orders", new { clientId = client, items = new[] { new { catalogId = catalog, quantity = 1, specs = new[] { new { name = "Size", value = "" } } } } });
+        Assert.Equal(HttpStatusCode.BadRequest, blank.Status);
+    }
+
+    [Fact]
     public async Task List_and_get_return_the_order()
     {
         var id = (await NewOrder()).Id;

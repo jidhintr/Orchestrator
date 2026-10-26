@@ -162,6 +162,23 @@ Feature: Orders
     And the response body does not contain "laborCost"
     And the response body does not contain "commission"
 
+  Scenario: An item carries a description and specs
+    When I send a POST request to "/api/v1/orders" with body:
+      """
+      { "clientId": {client:current}, "items": [{ "catalogId": {catalog:current}, "quantity": 5, "description": "Gift box", "specs": [{ "name": "Size", "value": "A4" }] }] }
+      """
+    Then the response status is 201
+    And the response JSON "items.0.description" is "Gift box"
+    And the response JSON "items.0.specs.0.name" is "Size"
+    And the response JSON "items.0.specs.0.value" is "A4"
+
+  Scenario: A spec without a value is rejected
+    When I send a POST request to "/api/v1/orders" with body:
+      """
+      { "clientId": {client:current}, "items": [{ "catalogId": {catalog:current}, "quantity": 5, "specs": [{ "name": "Size", "value": "" }] }] }
+      """
+    Then the response is a problem with status 400
+
   Scenario: Invalid quantity or past due date is rejected
     When I send a POST request to "/api/v1/orders" with body:
       """

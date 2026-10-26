@@ -13,6 +13,10 @@ const when = (iso: string) => new Date(iso).toLocaleString()
 const money = (n: number) => n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 const isOpen = (o: Order) => o.status !== 'Cancelled' && o.status !== 'Completed'
 const priorityKind = (rank: number) => (rank <= 1 ? 'muted' : rank === 2 ? 'info' : rank === 3 ? 'warn' : 'off')
+const parseSpecs = (text: string) => text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean).map((l) => {
+  const i = l.indexOf(':')
+  return i < 0 ? { name: l, value: '' } : { name: l.slice(0, i).trim(), value: l.slice(i + 1).trim() }
+})
 const summary = (o: Order) => o.items.map((i) => `${i.catalogName} x${i.quantity}`).join(', ')
 
 export function Orders() {
@@ -116,7 +120,7 @@ function CreateForm({ priorities, onDone, onCancel }: { priorities: Priority[]; 
     const d = new FormData(e.currentTarget)
     const input = {
       clientId: isClient ? undefined : Number(d.get('clientId')),
-      items: [...chosen].map((id) => ({ catalogId: Number(id), quantity: Number(d.get(`qty-${id}`)) })),
+      items: [...chosen].map((id) => ({ catalogId: Number(id), quantity: Number(d.get(`qty-${id}`)), description: String(d.get(`desc-${id}`)).trim() || undefined, specs: parseSpecs(String(d.get(`specs-${id}`))) })),
       priorityId: Number(d.get('priorityId')),
       commitmentDeadline: String(d.get('commitmentDeadline')) || undefined,
       reference: String(d.get('reference')).trim() || undefined,
@@ -135,9 +139,13 @@ function CreateForm({ priorities, onDone, onCancel }: { priorities: Priority[]; 
         <legend>Items</legend>
         <ChipPicker addLabel="Add item" empty="No items yet" showChosen={false} options={catalogs.map((c) => ({ key: String(c.id), label: c.name, hint: c.sku }))} selected={chosen} onToggle={toggle} />
         {catalogs.filter((c) => chosen.has(String(c.id))).map((c) => (
-          <div className="row" key={c.id}>
-            <label>{c.name} ({c.sku}) - quantity<input name={`qty-${c.id}`} type="number" required min={1} max={1000000} step={1} defaultValue={1} /></label>
-            <button type="button" className="secondary small" aria-label={`Remove ${c.name}`} onClick={() => toggle(String(c.id))}>Remove</button>
+          <div key={c.id}>
+            <div className="row">
+              <label>{c.name} ({c.sku}) - quantity<input name={`qty-${c.id}`} type="number" required min={1} max={1000000} step={1} defaultValue={1} /></label>
+              <button type="button" className="secondary small" aria-label={`Remove ${c.name}`} onClick={() => toggle(String(c.id))}>Remove</button>
+            </div>
+            <label>Description<input name={`desc-${c.id}`} maxLength={500} placeholder="What is printed" /></label>
+            <label>Specs (one per line, Name: value)<textarea name={`specs-${c.id}`} rows={3} placeholder="Size: A4, then GSM: 300 on the next line" /></label>
           </div>
         ))}
       </fieldset>
@@ -214,7 +222,7 @@ function Detail({ id, priorities, canManage, onChanged, onCancelled, onClose }: 
             <tbody>
               {order.items.map((i) => (
                 <tr key={i.id}>
-                  <td data-label="Item"><span className="stack"><span>{i.catalogName}</span><span className="muted">{i.catalogSku}</span></span></td>
+                  <td data-label="Item"><span className="stack"><span>{i.catalogName}</span><span className="muted">{i.catalogSku}</span>{i.description && <span className="muted">{i.description}</span>}{i.specs.map((x) => <span key={x.name} className="muted">{x.name}: {x.value}</span>)}</span></td>
                   <td data-label="Qty" className="num">{i.quantity}</td>
                   <td data-label="Unit price" className="num">{money(i.unitPrice)}</td>
                   <td data-label="Discounts" className="num">{i.catalogDiscountPercent}% + {i.clientDiscountPercent}%</td>

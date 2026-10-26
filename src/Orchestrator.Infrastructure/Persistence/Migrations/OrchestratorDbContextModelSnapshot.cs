@@ -811,6 +811,10 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
                         .HasPrecision(5, 2)
                         .HasColumnType("numeric(5,2)");
 
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<DateTime>("InsertedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -835,6 +839,10 @@ namespace Orchestrator.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Specs")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.Property<decimal>("UnitPrice")
                         .HasPrecision(18, 2)

@@ -1,4 +1,6 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Orchestrator.Domain;
 
@@ -81,6 +83,11 @@ internal sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderIte
     {
         builder.ToTable("order_items");
         builder.HasKey(i => i.Id);
+        builder.Property(i => i.Description).HasMaxLength(500);
+        builder.Property(i => i.Specs).HasColumnType("jsonb").HasConversion(
+            v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+            v => JsonSerializer.Deserialize<List<ItemSpec>>(v, (JsonSerializerOptions?)null) ?? new List<ItemSpec>(),
+            new ValueComparer<List<ItemSpec>>((a, b) => a!.SequenceEqual(b!), v => v.Count, v => v.ToList()));
         builder.Property(i => i.CatalogSku).HasMaxLength(50);
         builder.Property(i => i.CatalogName).HasMaxLength(150);
         builder.Property(i => i.UnitPrice).HasPrecision(18, 2);

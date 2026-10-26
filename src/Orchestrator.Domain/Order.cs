@@ -100,6 +100,8 @@ public sealed class Order : BaseEntity
     public List<OrderApproval> Approvals { get; } = [];
 }
 
+public sealed record ItemSpec(string Name, string Value);
+
 public sealed class OrderItem : BaseEntity
 {
     public int OrderId { get; set; }
@@ -111,6 +113,10 @@ public sealed class OrderItem : BaseEntity
     public Catalog? Catalog { get; set; }
 
     public int Quantity { get; set; }
+
+    public string? Description { get; set; }
+
+    public List<ItemSpec> Specs { get; set; } = [];
 
     public required string CatalogSku { get; set; }
 

@@ -63,6 +63,8 @@ export interface OrderItem {
   catalogSku: string
   catalogName: string
   quantity: number
+  description: string | null
+  specs: { name: string; value: string }[]
   unitPrice: number
   catalogDiscountPercent: number
   clientDiscountPercent: number
@@ -314,7 +316,7 @@ export const api = {
   order: (id: number) => call<Order>(`/orders/${id}`),
   orderEvents: (id: number) => call<OrderEvent[]>(`/orders/${id}/events`),
   priorities: () => call<Priority[]>('/priorities'),
-  placeOrder: (input: { clientId?: number; items: { catalogId: number; quantity: number }[]; priorityId: number; commitmentDeadline?: string; reference?: string; notes?: string }) => call<Order>('/orders', 'POST', input),
+  placeOrder: (input: { clientId?: number; items: { catalogId: number; quantity: number; description?: string; specs?: { name: string; value: string }[] }[]; priorityId: number; commitmentDeadline?: string; reference?: string; notes?: string }) => call<Order>('/orders', 'POST', input),
   adjustOrderQuote: (id: number, total: number, reason: string) => call<Order>(`/orders/${id}/quote`, 'POST', { total, reason }),
   cancelOrder: (id: number, reason: string) => call<Order>(`/orders/${id}/cancel`, 'POST', { reason }),
   requestOrderPriority: (id: number, priorityId: number, reason?: string) => call<OrderEvent>(`/orders/${id}/priority-requests`, 'POST', { priorityId, reason }),

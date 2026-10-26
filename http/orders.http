@@ -48,7 +48,7 @@ Content-Type: application/json
 
 {
   "clientId": {{client.response.body.$.id}},
-  "items": [{ "catalogId": {{catalog.response.body.$.id}}, "quantity": 500 }],
+  "items": [{ "catalogId": {{catalog.response.body.$.id}}, "quantity": 500, "description": "Gift box", "specs": [{ "name": "Size", "value": "A4" }, { "name": "GSM", "value": "300" }] }],
   "priorityId": 2,
   "commitmentDeadline": "2030-01-31",
   "reference": "PO-1001",
@@ -76,6 +76,13 @@ Authorization: Bearer {{login.response.body.$.accessToken}}
 Content-Type: application/json
 
 { "total": 4200.00, "reason": "Bulk rate agreed with the client" }
+
+### A spec without a value returns 400
+POST {{baseUrl}}/api/v1/orders
+Authorization: Bearer {{login.response.body.$.accessToken}}
+Content-Type: application/json
+
+{ "clientId": {{client.response.body.$.id}}, "items": [{ "catalogId": {{catalog.response.body.$.id}}, "quantity": 1, "specs": [{ "name": "Size", "value": "" }] }] }
 
 ### Zero quantity returns 400
 POST {{baseUrl}}/api/v1/orders
