@@ -43,7 +43,7 @@ export function Orders() {
   const all: Col<Order>[] = [
     { key: 'id', label: 'Order', kind: 'number', locked: true, value: (o) => o.id, cell: (o) => <button className="link" onClick={() => open({ mode: 'detail', id: o.id })}>{o.orderNo}</button> },
     { key: 'client', label: 'Client', kind: 'text', value: (o) => o.clientCompanyName, cell: (o) => o.clientCompanyName },
-    { key: 'items', label: 'Items', kind: 'text', value: summary, cell: (o) => <span className="muted">{summary(o)}</span> },
+    { key: 'items', label: 'Catalogs', kind: 'text', value: summary, cell: (o) => <span className="muted">{summary(o)}</span> },
     { key: 'net', label: 'Net amount', kind: 'number', value: (o) => o.netAmount, cell: (o) => money(o.netAmount) },
     { key: 'deadline', label: 'Deadline', kind: 'text', value: (o) => o.commitmentDeadline ?? '', cell: (o) => o.commitmentDeadline ?? <span className="none" /> },
     { key: 'reference', label: 'Reference', kind: 'text', value: (o) => o.reference ?? '', cell: (o) => o.reference },
@@ -100,6 +100,12 @@ function CreateForm({ priorities, onDone, onCancel }: { priorities: Priority[]; 
   const [clients, setClients] = useState<Client[]>([])
   const [catalogs, setCatalogs] = useState<Catalog[]>([])
   const [chosen, setChosen] = useState<Set<string>>(new Set())
+  const [custom, setCustom] = useState<Set<string>>(new Set())
+  const flipCustom = (key: string) => setCustom((cur) => {
+    const next = new Set(cur)
+    if (!next.delete(key)) next.add(key)
+    return next
+  })
 
   useEffect(() => {
     Promise.all([isClient ? Promise.resolve([]) : api.clients(), api.catalogs()])
@@ -121,7 +127,7 @@ function CreateForm({ priorities, onDone, onCancel }: { priorities: Priority[]; 
     const d = new FormData(e.currentTarget)
     const input = {
       clientId: isClient ? undefined : Number(d.get('clientId')),
-      items: [...chosen].map((id) => ({ catalogId: Number(id), quantity: Number(d.get(`qty-${id}`)), description: String(d.get(`desc-${id}`)).trim() || undefined, specs: parseSpecs(String(d.get(`specs-${id}`))) })),
+      items: [...chosen].map((id) => ({ catalogId: Number(id), quantity: Number(d.get(`qty-${id}`)), description: String(d.get(`desc-${id}`) ?? '').trim() || undefined, specs: parseSpecs(String(d.get(`specs-${id}`) ?? '')) })),
       priorityId: Number(d.get('priorityId')),
       commitmentDeadline: String(d.get('commitmentDeadline')) || undefined,
       reference: String(d.get('reference')).trim() || undefined,
@@ -137,16 +143,24 @@ function CreateForm({ priorities, onDone, onCancel }: { priorities: Priority[]; 
     <Form onSubmit={submit}>
       {!isClient && <label>Client<select name="clientId" required defaultValue=""><option value="" disabled>-- Select --</option>{clients.map((c) => <option key={c.id} value={c.id}>{c.companyName}</option>)}</select></label>}
       <fieldset>
-        <legend>Items</legend>
-        <ChipPicker addLabel="Add item" empty="No items yet" showChosen={false} options={catalogs.map((c) => ({ key: String(c.id), label: c.name, hint: c.sku }))} selected={chosen} onToggle={toggle} />
+        <legend>Catalogs to order</legend>
+        {chosen.size === 0 && <p className="muted">Choose the catalogs (products) this order is for, then set the quantity of each.</p>}
+        <ChipPicker addLabel="Add catalog" empty="No catalogs added yet" showChosen={false} options={catalogs.map((c) => ({ key: String(c.id), label: c.name, hint: c.sku }))} selected={chosen} onToggle={toggle} />
         {catalogs.filter((c) => chosen.has(String(c.id))).map((c) => (
-          <div key={c.id}>
-            <div className="row">
-              <label>{c.name} ({c.sku}) - quantity<input name={`qty-${c.id}`} type="number" required min={1} max={1000000} step={1} defaultValue={1} /></label>
-              <button type="button" className="secondary small" aria-label={`Remove ${c.name}`} onClick={() => toggle(String(c.id))}>Remove</button>
+          <div className="order-item" key={c.id}>
+            <div className="order-item-head">
+              <strong>{c.name}</strong><span className="muted">{c.sku}</span>
+              <button type="button" className="icon-btn" aria-label={`Remove ${c.name}`} onClick={() => toggle(String(c.id))}><Icon name="close" /></button>
             </div>
-            <label>Description<input name={`desc-${c.id}`} maxLength={500} placeholder="What is printed" /></label>
-            <label>Specs (one per line, Name: value)<textarea name={`specs-${c.id}`} rows={3} placeholder="Size: A4, then GSM: 300 on the next line" /></label>
+            <div className="row">
+              <label>Quantity<input name={`qty-${c.id}`} type="number" required min={1} max={1000000} step={1} defaultValue={1} /></label>
+              <label className="switch"><input type="checkbox" role="switch" checked={custom.has(String(c.id))} onChange={() => flipCustom(String(c.id))} /><span>Add Custom Details</span></label>
+            </div>
+            <div className="stack"><span className="muted">Stages this catalog goes through</span><Timeline items={c.steps.map((x) => x.jobTypeName)} empty="This catalog has no job steps." /></div>
+            {custom.has(String(c.id)) && <>
+              <label>Customer's custom description<input name={`desc-${c.id}`} maxLength={500} placeholder="Anything special the customer asked for" autoFocus /></label>
+              <label>Custom specs (one per line as Name: value)<textarea name={`specs-${c.id}`} rows={2} placeholder="Size: A4" /></label>
+            </>}
           </div>
         ))}
       </fieldset>
@@ -217,9 +231,9 @@ function Detail({ id, priorities, canManage, onChanged, onCancelled, onClose }: 
         {order.reference && <label>Reference<input readOnly value={order.reference} /></label>}
         {order.notes && <label>Notes<input readOnly value={order.notes} /></label>}
         <fieldset>
-          <legend>Items</legend>
+          <legend>Catalogs ordered</legend>
           <table>
-            <thead><tr><th>Item</th><th className="num">Qty</th><th className="num">Unit price</th><th className="num">Discounts</th><th className="num">Line net</th></tr></thead>
+            <thead><tr><th>Catalog</th><th className="num">Qty</th><th className="num">Unit price</th><th className="num">Discounts</th><th className="num">Line net</th></tr></thead>
             <tbody>
               {order.items.map((i) => (
                 <tr key={i.id}>
